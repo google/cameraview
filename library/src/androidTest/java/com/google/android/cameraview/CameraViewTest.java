@@ -16,30 +16,83 @@
 
 package com.google.android.cameraview;
 
+import org.hamcrest.Matcher;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import android.content.Context;
-import android.support.test.InstrumentationRegistry;
-import android.support.test.annotation.UiThreadTest;
-import android.support.test.rule.UiThreadTestRule;
+import android.graphics.Bitmap;
+import android.os.SystemClock;
+import android.support.test.espresso.NoMatchingViewException;
+import android.support.test.espresso.UiController;
+import android.support.test.espresso.ViewAction;
+import android.support.test.espresso.ViewAssertion;
+import android.support.test.rule.ActivityTestRule;
+import android.support.test.runner.AndroidJUnit4;
+import android.view.TextureView;
+import android.view.View;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static android.support.test.espresso.Espresso.onView;
+import static android.support.test.espresso.assertion.ViewAssertions.matches;
+import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
+import static android.support.test.espresso.matcher.ViewMatchers.withId;
+import static junit.framework.Assert.assertFalse;
 
+@RunWith(AndroidJUnit4.class)
 public class CameraViewTest {
 
-    public final UiThreadTestRule rule;
+    @Rule
+    public final ActivityTestRule<CameraViewActivity> rule;
 
     public CameraViewTest() {
-        rule = new UiThreadTestRule();
+        rule = new ActivityTestRule<>(CameraViewActivity.class);
     }
 
     @Test
-    @UiThreadTest
-    public void testConstructor() {
-        Context context = InstrumentationRegistry.getTargetContext();
-        CameraView cameraView = new CameraView(context);
-        assertThat(cameraView.getChildCount(), is(0));
+    public void testSetup() {
+        onView(withId(R.id.camera))
+                .check(matches(isDisplayed()));
+        onView(withId(R.id.texture_view))
+                .check(matches(isDisplayed()));
+    }
+
+    @Test
+    public void preview_isShowing() {
+        onView(withId(R.id.texture_view))
+                .check(matches(isDisplayed()))
+                // TODO: Replace below with an IdlingCallback when state listener is implemented
+                .perform(new WaitAction())
+                .check(new ViewAssertion() {
+                    @Override
+                    public void check(View view, NoMatchingViewException noViewFoundException) {
+                        TextureView textureView = (TextureView) view;
+                        Bitmap bitmap = textureView.getBitmap();
+                        int topLeft = bitmap.getPixel(0, 0);
+                        int topRight = bitmap.getPixel(0, bitmap.getHeight() - 1);
+                        int bottomLeft = bitmap.getPixel(bitmap.getWidth() - 1, 0);
+                        assertFalse(topLeft == topRight && topRight == bottomLeft);
+                    }
+                });
+    }
+
+    // A temporary workaround
+    private static class WaitAction implements ViewAction {
+
+        @Override
+        public Matcher<View> getConstraints() {
+            return isDisplayed();
+        }
+
+        @Override
+        public String getDescription() {
+            return "aaa";
+        }
+
+        @Override
+        public void perform(UiController uiController, View view) {
+            SystemClock.sleep(1000);
+        }
+
     }
 
 }

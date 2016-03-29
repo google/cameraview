@@ -14,21 +14,19 @@
  * limitations under the License.
  */
 
-package com.google.android.cameraview.demo;
+package com.google.android.cameraview;
 
-import com.google.android.cameraview.CameraView;
-
+import android.app.Activity;
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
 
-public class MainActivity extends AppCompatActivity {
+public class CameraViewActivity extends Activity {
 
     private CameraView mCameraView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_camera_view);
         mCameraView = (CameraView) findViewById(R.id.camera);
     }
 
