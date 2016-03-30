@@ -40,6 +40,8 @@ class Camera1 extends CameraViewImpl {
 
     private final PreviewInfo mPreviewInfo = new PreviewInfo();
 
+    private final SizeMap mPreviewSizes = new SizeMap();
+
     private static class PreviewInfo {
         SurfaceTexture surface;
         int width;
@@ -54,8 +56,6 @@ class Camera1 extends CameraViewImpl {
 
     private final TextureView.SurfaceTextureListener mSurfaceTextureListener
             = new TextureView.SurfaceTextureListener() {
-
-        private boolean mUpdatedCalled;
 
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
@@ -77,13 +77,11 @@ class Camera1 extends CameraViewImpl {
 
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-            if (!mUpdatedCalled) {
-                mUpdatedCalled = true;
-            }
         }
     };
 
-    public Camera1(Context context) {
+    public Camera1(Context context, InternalCameraViewCallback callback) {
+        super(callback);
         mContext = context;
     }
 
@@ -123,6 +121,16 @@ class Camera1 extends CameraViewImpl {
         mCamera.stopPreview();
     }
 
+    @Override
+    SizeMap getSupportedPreviewSizes() {
+        return mPreviewSizes;
+    }
+
+    @Override
+    boolean isCameraOpened() {
+        return mCamera != null;
+    }
+
     /**
      * This rewrites {@link #mCameraId} and {@link #mCameraInfo}.
      */
@@ -143,12 +151,19 @@ class Camera1 extends CameraViewImpl {
             releaseCamera();
         }
         mCamera = Camera.open(mCameraId);
+        Camera.Parameters parameters = mCamera.getParameters();
+        mPreviewSizes.clear();
+        for (Camera.Size size : parameters.getSupportedPreviewSizes()) {
+            mPreviewSizes.add(new Size(size.width, size.height));
+        }
+        mCallback.onCameraOpened();
     }
 
     private void releaseCamera() {
         if (mCamera != null) {
             mCamera.release();
             mCamera = null;
+            mCallback.onCameraClosed();
         }
     }
 

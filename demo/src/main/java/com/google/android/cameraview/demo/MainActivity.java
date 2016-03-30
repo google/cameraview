@@ -20,8 +20,11 @@ import com.google.android.cameraview.CameraView;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final String TAG = "MainActivity";
 
     private CameraView mCameraView;
 
@@ -30,6 +33,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mCameraView = (CameraView) findViewById(R.id.camera);
+        if (mCameraView != null) {
+            mCameraView.addCallback(mCallback);
+        }
     }
 
     @Override
@@ -45,5 +51,20 @@ public class MainActivity extends AppCompatActivity {
         mCameraView.onPause();
         super.onPause();
     }
+
+    private CameraView.Callback mCallback
+            = new CameraView.Callback() {
+
+        @Override
+        public void onCameraOpened(CameraView cameraView) {
+            Log.d(TAG, "onCameraOpened");
+        }
+
+        @Override
+        public void onCameraClosed(CameraView cameraView) {
+            Log.d(TAG, "onCameraClosed");
+        }
+
+    };
 
 }

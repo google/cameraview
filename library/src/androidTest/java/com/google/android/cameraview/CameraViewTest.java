@@ -17,26 +17,40 @@
 package com.google.android.cameraview;
 
 import org.hamcrest.Matcher;
+import org.hamcrest.core.IsAnything;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import android.graphics.Bitmap;
 import android.os.SystemClock;
+import android.support.test.espresso.IdlingResource;
 import android.support.test.espresso.NoMatchingViewException;
 import android.support.test.espresso.UiController;
 import android.support.test.espresso.ViewAction;
 import android.support.test.espresso.ViewAssertion;
+import android.support.test.filters.FlakyTest;
 import android.support.test.rule.ActivityTestRule;
 import android.support.test.runner.AndroidJUnit4;
 import android.view.TextureView;
 import android.view.View;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.List;
+
 import static android.support.test.espresso.Espresso.onView;
+import static android.support.test.espresso.Espresso.registerIdlingResources;
+import static android.support.test.espresso.Espresso.unregisterIdlingResources;
 import static android.support.test.espresso.assertion.ViewAssertions.matches;
+import static android.support.test.espresso.matcher.ViewMatchers.assertThat;
 import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static android.support.test.espresso.matcher.ViewMatchers.withId;
 import static junit.framework.Assert.assertFalse;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 @RunWith(AndroidJUnit4.class)
 public class CameraViewTest {
@@ -44,8 +58,23 @@ public class CameraViewTest {
     @Rule
     public final ActivityTestRule<CameraViewActivity> rule;
 
+    private CameraViewIdlingResource mCameraViewIdlingResource;
+
     public CameraViewTest() {
         rule = new ActivityTestRule<>(CameraViewActivity.class);
+    }
+
+    @Before
+    public void setUpIdlingResource() {
+        mCameraViewIdlingResource = new CameraViewIdlingResource(
+                (CameraView) rule.getActivity().findViewById(R.id.camera));
+        registerIdlingResources(mCameraViewIdlingResource);
+    }
+
+    @After
+    public void tearDownIdlingResource() throws Exception {
+        unregisterIdlingResources(mCameraViewIdlingResource);
+        mCameraViewIdlingResource.close();
     }
 
     @Test
@@ -57,40 +86,121 @@ public class CameraViewTest {
     }
 
     @Test
-    public void preview_isShowing() {
+    @FlakyTest
+    public void preview_isShowing() throws Exception {
         onView(withId(R.id.texture_view))
-                .check(matches(isDisplayed()))
-                // TODO: Replace below with an IdlingCallback when state listener is implemented
-                .perform(new WaitAction())
+                .perform(new WaitAction(1000))
                 .check(new ViewAssertion() {
                     @Override
                     public void check(View view, NoMatchingViewException noViewFoundException) {
                         TextureView textureView = (TextureView) view;
                         Bitmap bitmap = textureView.getBitmap();
                         int topLeft = bitmap.getPixel(0, 0);
-                        int topRight = bitmap.getPixel(0, bitmap.getHeight() - 1);
-                        int bottomLeft = bitmap.getPixel(bitmap.getWidth() - 1, 0);
-                        assertFalse(topLeft == topRight && topRight == bottomLeft);
+                        int center = bitmap.getPixel(bitmap.getWidth() / 2, bitmap.getHeight() / 2);
+                        int bottomRight = bitmap.getPixel(
+                                bitmap.getWidth() - 1, bitmap.getHeight() - 1);
+                        assertFalse("Preview possibly blank: " + Integer.toHexString(topLeft),
+                                topLeft == center && center == bottomRight);
                     }
                 });
     }
 
-    // A temporary workaround
+    @Test
+    public void getSupportedPreviewSizes() {
+        onView(withId(R.id.camera))
+                .check(new ViewAssertion() {
+                    @Override
+                    public void check(View view, NoMatchingViewException noViewFoundException) {
+                        CameraView cameraView = (CameraView) view;
+                        SizeMap map = cameraView.getSupportedPreviewSizes();
+                        assertThat(map.ratios().size(), is(greaterThanOrEqualTo(1)));
+                        for (AspectRatio ratio : map.ratios()) {
+                            final List<Size> sizes = map.sizes(ratio);
+                            assertThat(sizes.size(), is(is(greaterThanOrEqualTo(1))));
+                        }
+                    }
+                });
+    }
+
+    /**
+     * Wait for a camera to open.
+     */
+    private static class CameraViewIdlingResource implements IdlingResource, Closeable {
+
+        private final CameraView.Callback mCallback
+                = new CameraView.Callback() {
+
+            @Override
+            public void onCameraOpened(CameraView cameraView) {
+                if (!mIsIdleNow) {
+                    mIsIdleNow = true;
+                    if (mResourceCallback != null) {
+                        mResourceCallback.onTransitionToIdle();
+                    }
+                }
+            }
+
+            @Override
+            public void onCameraClosed(CameraView cameraView) {
+                mIsIdleNow = false;
+            }
+        };
+
+        private final CameraView mCameraView;
+
+        private ResourceCallback mResourceCallback;
+
+        private boolean mIsIdleNow;
+
+        public CameraViewIdlingResource(CameraView cameraView) {
+            mCameraView = cameraView;
+            mCameraView.addCallback(mCallback);
+            mIsIdleNow = mCameraView.isCameraOpened();
+        }
+
+        @Override
+        public void close() throws IOException {
+            mCameraView.removeCallback(mCallback);
+        }
+
+        @Override
+        public String getName() {
+            return CameraViewIdlingResource.class.getSimpleName();
+        }
+
+        @Override
+        public boolean isIdleNow() {
+            return mIsIdleNow;
+        }
+
+        @Override
+        public void registerIdleTransitionCallback(ResourceCallback callback) {
+            mResourceCallback = callback;
+        }
+
+    }
+
     private static class WaitAction implements ViewAction {
+
+        private final long mMs;
+
+        public WaitAction(long ms) {
+            mMs = ms;
+        }
 
         @Override
         public Matcher<View> getConstraints() {
-            return isDisplayed();
+            return new IsAnything<>();
         }
 
         @Override
         public String getDescription() {
-            return "aaa";
+            return "wait";
         }
 
         @Override
         public void perform(UiController uiController, View view) {
-            SystemClock.sleep(1000);
+            SystemClock.sleep(mMs);
         }
 
     }

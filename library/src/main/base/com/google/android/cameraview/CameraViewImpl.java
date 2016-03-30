@@ -20,6 +20,12 @@ import android.view.TextureView;
 
 abstract class CameraViewImpl {
 
+    protected final InternalCameraViewCallback mCallback;
+
+    public CameraViewImpl(InternalCameraViewCallback callback) {
+        mCallback = callback;
+    }
+
     abstract TextureView.SurfaceTextureListener getSurfaceTextureListener();
 
     abstract void onResume();
@@ -30,4 +36,7 @@ abstract class CameraViewImpl {
 
     abstract void stopPreview();
 
+    abstract SizeMap getSupportedPreviewSizes();
+
+    abstract boolean isCameraOpened();
 }
