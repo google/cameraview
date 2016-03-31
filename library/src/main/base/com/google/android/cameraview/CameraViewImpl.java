@@ -20,9 +20,9 @@ import android.view.TextureView;
 
 abstract class CameraViewImpl {
 
-    protected final InternalCameraViewCallback mCallback;
+    protected final Callback mCallback;
 
-    public CameraViewImpl(InternalCameraViewCallback callback) {
+    public CameraViewImpl(Callback callback) {
         mCallback = callback;
     }
 
@@ -39,4 +39,16 @@ abstract class CameraViewImpl {
     abstract SizeMap getSupportedPreviewSizes();
 
     abstract boolean isCameraOpened();
+
+    abstract void setAspectRatio(AspectRatio ratio);
+
+    abstract AspectRatio getAspectRatio();
+
+    interface Callback {
+
+        void onCameraOpened();
+
+        void onCameraClosed();
+
+    }
 }

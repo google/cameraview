@@ -36,6 +36,7 @@ import android.support.test.rule.ActivityTestRule;
 import android.support.test.runner.AndroidJUnit4;
 import android.view.TextureView;
 import android.view.View;
+import android.view.ViewGroup;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -49,7 +50,11 @@ import static android.support.test.espresso.matcher.ViewMatchers.assertThat;
 import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static android.support.test.espresso.matcher.ViewMatchers.withId;
 import static junit.framework.Assert.assertFalse;
+import static org.hamcrest.CoreMatchers.either;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 @RunWith(AndroidJUnit4.class)
@@ -122,6 +127,64 @@ public class CameraViewTest {
                 });
     }
 
+    @Test
+    public void testAspectRatio() {
+        onView(withId(R.id.camera))
+                .check(new ViewAssertion() {
+                    @Override
+                    public void check(View view, NoMatchingViewException noViewFoundException) {
+                        CameraView cameraView = (CameraView) view;
+                        AspectRatio ratio = cameraView.getAspectRatio();
+                        assertThat(ratio, is(notNullValue()));
+                        SizeMap map = cameraView.getSupportedPreviewSizes();
+                        assertThat(map.ratios(), hasItem(ratio));
+                        AspectRatio otherRatio = null;
+                        for (AspectRatio r : map.ratios()) {
+                            if (!r.equals(ratio)) {
+                                otherRatio = r;
+                                break;
+                            }
+                        }
+                        if (otherRatio != null) {
+                            cameraView.setAspectRatio(otherRatio);
+                            assertThat(cameraView.getAspectRatio(), is(equalTo(otherRatio)));
+                        }
+                    }
+                });
+    }
+
+    @Test
+    public void testAdjustViewBounds() {
+        onView(withId(R.id.camera))
+                .check(new ViewAssertion() {
+                    @Override
+                    public void check(View view, NoMatchingViewException noViewFoundException) {
+                        CameraView cameraView = (CameraView) view;
+                        assertThat(cameraView.getAdjustViewBounds(), is(false));
+                        cameraView.setAdjustViewBounds(true);
+                        assertThat(cameraView.getAdjustViewBounds(), is(true));
+                    }
+                })
+                .perform(new AnythingAction("layout") {
+                    @Override
+                    public void perform(UiController uiController, View view) {
+                        ViewGroup.LayoutParams params = view.getLayoutParams();
+                        params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+                        view.setLayoutParams(params);
+                    }
+                })
+                .check(new ViewAssertion() {
+                    @Override
+                    public void check(View view, NoMatchingViewException noViewFoundException) {
+                        CameraView cameraView = (CameraView) view;
+                        AspectRatio cameraRatio = cameraView.getAspectRatio();
+                        AspectRatio viewRatio = new AspectRatio(view.getWidth(), view.getHeight());
+                        assertThat(cameraRatio, is(either(equalTo(viewRatio))
+                                .or(equalTo(viewRatio.inverse()))));
+                    }
+                });
+    }
+
     /**
      * Wait for a camera to open.
      */
@@ -180,12 +243,28 @@ public class CameraViewTest {
 
     }
 
-    private static class WaitAction implements ViewAction {
+    private static class WaitAction extends AnythingAction {
 
         private final long mMs;
 
         public WaitAction(long ms) {
+            super("wait");
             mMs = ms;
+        }
+
+        @Override
+        public void perform(UiController uiController, View view) {
+            SystemClock.sleep(mMs);
+        }
+
+    }
+
+    private static abstract class AnythingAction implements ViewAction {
+
+        private final String mDescription;
+
+        public AnythingAction(String description) {
+            mDescription = description;
         }
 
         @Override
@@ -195,14 +274,8 @@ public class CameraViewTest {
 
         @Override
         public String getDescription() {
-            return "wait";
+            return mDescription;
         }
-
-        @Override
-        public void perform(UiController uiController, View view) {
-            SystemClock.sleep(mMs);
-        }
-
     }
 
 }

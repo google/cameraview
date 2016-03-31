@@ -24,11 +24,14 @@ import android.view.TextureView;
 import android.view.WindowManager;
 
 import java.io.IOException;
+import java.util.List;
 
 @SuppressWarnings("deprecation")
 class Camera1 extends CameraViewImpl {
 
     private static final int INVALID_CAMERA_ID = -1;
+
+    private static final AspectRatio DEFAULT_ASPECT_RATIO = new AspectRatio(4, 3);
 
     private final Context mContext;
 
@@ -36,11 +39,15 @@ class Camera1 extends CameraViewImpl {
 
     private Camera mCamera;
 
+    private Camera.Parameters mCameraParameters;
+
     private final Camera.CameraInfo mCameraInfo = new Camera.CameraInfo();
 
     private final PreviewInfo mPreviewInfo = new PreviewInfo();
 
     private final SizeMap mPreviewSizes = new SizeMap();
+
+    private AspectRatio mAspectRatio;
 
     private static class PreviewInfo {
         SurfaceTexture surface;
@@ -60,13 +67,17 @@ class Camera1 extends CameraViewImpl {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             mPreviewInfo.configure(surface, width, height);
-            setUpPreview();
+            if (mCamera != null) {
+                setUpPreview();
+            }
         }
 
         @Override
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
             mPreviewInfo.configure(surface, width, height);
-            setUpPreview();
+            if (mCamera != null) {
+                setUpPreview();
+            }
         }
 
         @Override
@@ -80,7 +91,7 @@ class Camera1 extends CameraViewImpl {
         }
     };
 
-    public Camera1(Context context, InternalCameraViewCallback callback) {
+    public Camera1(Context context, Callback callback) {
         super(callback);
         mContext = context;
     }
@@ -131,6 +142,29 @@ class Camera1 extends CameraViewImpl {
         return mCamera != null;
     }
 
+    @Override
+    void setAspectRatio(AspectRatio ratio) {
+        if (mAspectRatio == null || !isCameraOpened()) {
+            // Handle this later when camera is opened
+            mAspectRatio = ratio;
+        } else if (!mAspectRatio.equals(ratio)) {
+            final List<Size> sizes = mPreviewSizes.sizes(ratio);
+            if (sizes == null) {
+                throw new UnsupportedOperationException(ratio + " is not supported");
+            } else {
+                mAspectRatio = ratio;
+                Size size = chooseOptimalSize(sizes);
+                mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
+                mCamera.setParameters(mCameraParameters);
+            }
+        }
+    }
+
+    @Override
+    AspectRatio getAspectRatio() {
+        return mAspectRatio;
+    }
+
     /**
      * This rewrites {@link #mCameraId} and {@link #mCameraInfo}.
      */
@@ -151,12 +185,41 @@ class Camera1 extends CameraViewImpl {
             releaseCamera();
         }
         mCamera = Camera.open(mCameraId);
-        Camera.Parameters parameters = mCamera.getParameters();
+        mCameraParameters = mCamera.getParameters();
+        // Supported preview sizes
         mPreviewSizes.clear();
-        for (Camera.Size size : parameters.getSupportedPreviewSizes()) {
+        for (Camera.Size size : mCameraParameters.getSupportedPreviewSizes()) {
             mPreviewSizes.add(new Size(size.width, size.height));
         }
+        // AspectRatio
+        if (mAspectRatio == null) {
+            mAspectRatio = chooseAspectRatio();
+        } else {
+            final List<Size> sizes = mPreviewSizes.sizes(mAspectRatio);
+            if (sizes == null) { // Not supported
+                mAspectRatio = chooseAspectRatio();
+            } else { // The specified AspectRatio is supported
+                Size size = chooseOptimalSize(sizes);
+                mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
+                mCamera.setParameters(mCameraParameters);
+            }
+        }
         mCallback.onCameraOpened();
+    }
+
+    private AspectRatio chooseAspectRatio() {
+        AspectRatio r = null;
+        for (AspectRatio ratio : mPreviewSizes.ratios()) {
+            r = ratio;
+            if (ratio.equals(DEFAULT_ASPECT_RATIO)) {
+                return ratio;
+            }
+        }
+        return r;
+    }
+
+    private Size chooseOptimalSize(List<Size> sizes) {
+        return sizes.get(0); // TODO: Pick optimally
     }
 
     private void releaseCamera() {

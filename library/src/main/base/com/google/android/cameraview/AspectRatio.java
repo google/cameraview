@@ -94,6 +94,14 @@ public class AspectRatio implements Comparable<AspectRatio> {
         return -1;
     }
 
+    /**
+     * @return The inverse of this {@link AspectRatio}.
+     */
+    public AspectRatio inverse() {
+        //noinspection SuspiciousNameCombination
+        return new AspectRatio(mY, mX);
+    }
+
     private static int gcd(int a, int b) {
         while (b != 0) {
             int c = b;
