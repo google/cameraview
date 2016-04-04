@@ -17,26 +17,51 @@
 package com.google.android.cameraview;
 
 import android.support.annotation.NonNull;
+import android.support.v4.util.SparseArrayCompat;
 
 /**
  * Immutable class for describing proportional relationship between width and height.
  */
 public class AspectRatio implements Comparable<AspectRatio> {
 
+    private final static SparseArrayCompat<SparseArrayCompat<AspectRatio>> sCache
+            = new SparseArrayCompat<>(16);
+
     private final int mX;
     private final int mY;
 
     /**
-     * Creates a new instance of {@link AspectRatio}. The values {@code x} and {@code} will be
-     * reduced by their greatest common divider.
+     * Returns an instance of {@link AspectRatio} specified by {@code x} and {@code y} values.
+     * The values {@code x} and {@code} will be reduced by their greatest common divider.
      *
      * @param x The width
      * @param y The height
+     * @return An instance of {@link AspectRatio}
      */
-    public AspectRatio(int x, int y) {
+    public static AspectRatio of(int x, int y) {
         int gcd = gcd(x, y);
-        mX = x / gcd;
-        mY = y / gcd;
+        x /= gcd;
+        y /= gcd;
+        SparseArrayCompat<AspectRatio> arrayX = sCache.get(x);
+        if (arrayX == null) {
+            AspectRatio ratio = new AspectRatio(x, y);
+            arrayX = new SparseArrayCompat<>();
+            arrayX.put(y, ratio);
+            sCache.put(x, arrayX);
+            return ratio;
+        } else {
+            AspectRatio ratio = arrayX.get(y);
+            if (ratio == null) {
+                ratio = new AspectRatio(x, y);
+                arrayX.put(y, ratio);
+            }
+            return ratio;
+        }
+    }
+
+    private AspectRatio(int x, int y) {
+        mX = x;
+        mY = y;
     }
 
     public int getX() {
@@ -99,7 +124,7 @@ public class AspectRatio implements Comparable<AspectRatio> {
      */
     public AspectRatio inverse() {
         //noinspection SuspiciousNameCombination
-        return new AspectRatio(mY, mX);
+        return AspectRatio.of(mY, mX);
     }
 
     private static int gcd(int a, int b) {

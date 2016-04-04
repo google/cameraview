@@ -44,6 +44,8 @@ abstract class CameraViewImpl {
 
     abstract AspectRatio getAspectRatio();
 
+    abstract int getDisplayOrientation();
+
     interface Callback {
 
         void onCameraOpened();

@@ -19,6 +19,7 @@ package com.google.android.cameraview;
 import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
+import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.WindowManager;
@@ -31,7 +32,8 @@ class Camera1 extends CameraViewImpl {
 
     private static final int INVALID_CAMERA_ID = -1;
 
-    private static final AspectRatio DEFAULT_ASPECT_RATIO = new AspectRatio(4, 3);
+    private static final AspectRatio DEFAULT_ASPECT_RATIO = AspectRatio.of(4, 3);
+    private static final String TAG = "Camera1";
 
     private final Context mContext;
 
@@ -48,6 +50,8 @@ class Camera1 extends CameraViewImpl {
     private final SizeMap mPreviewSizes = new SizeMap();
 
     private AspectRatio mAspectRatio;
+
+    private int mDisplayOrientation;
 
     private static class PreviewInfo {
         SurfaceTexture surface;
@@ -120,8 +124,9 @@ class Camera1 extends CameraViewImpl {
 
     private void setUpPreview() {
         try {
-            mCamera.setPreviewTexture(mPreviewInfo.surface);
-            mCamera.setDisplayOrientation(calcDisplayOrientation());
+            if (mPreviewInfo.surface != null) {
+                mCamera.setPreviewTexture(mPreviewInfo.surface);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -165,6 +170,11 @@ class Camera1 extends CameraViewImpl {
         return mAspectRatio;
     }
 
+    @Override
+    int getDisplayOrientation() {
+        return mDisplayOrientation;
+    }
+
     /**
      * This rewrites {@link #mCameraId} and {@link #mCameraInfo}.
      */
@@ -193,17 +203,19 @@ class Camera1 extends CameraViewImpl {
         }
         // AspectRatio
         if (mAspectRatio == null) {
-            mAspectRatio = chooseAspectRatio();
-        } else {
-            final List<Size> sizes = mPreviewSizes.sizes(mAspectRatio);
-            if (sizes == null) { // Not supported
-                mAspectRatio = chooseAspectRatio();
-            } else { // The specified AspectRatio is supported
-                Size size = chooseOptimalSize(sizes);
-                mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
-                mCamera.setParameters(mCameraParameters);
-            }
+            mAspectRatio = DEFAULT_ASPECT_RATIO;
         }
+        final List<Size> sizes = mPreviewSizes.sizes(mAspectRatio);
+        if (sizes == null) { // Not supported
+            mAspectRatio = chooseAspectRatio();
+        }
+        Size size = chooseOptimalSize(sizes);
+        mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
+        Log.d(TAG, "openCamera: " + size.getWidth() + "x" + size.getHeight());
+        mCamera.setParameters(mCameraParameters);
+        // Display orientation
+        mDisplayOrientation = calcDisplayOrientation();
+        mCamera.setDisplayOrientation(mDisplayOrientation);
         mCallback.onCameraOpened();
     }
 
@@ -219,6 +231,7 @@ class Camera1 extends CameraViewImpl {
     }
 
     private Size chooseOptimalSize(List<Size> sizes) {
+        Log.d(TAG, "chooseOptimalSize: " + sizes.get(0));
         return sizes.get(0); // TODO: Pick optimally
     }
 

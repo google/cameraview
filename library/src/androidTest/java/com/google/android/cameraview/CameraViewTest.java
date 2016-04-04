@@ -49,8 +49,8 @@ import static android.support.test.espresso.assertion.ViewAssertions.matches;
 import static android.support.test.espresso.matcher.ViewMatchers.assertThat;
 import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static android.support.test.espresso.matcher.ViewMatchers.withId;
+import static com.google.android.cameraview.AspectRatioIsCloseTo.closeToOrInverse;
 import static junit.framework.Assert.assertFalse;
-import static org.hamcrest.CoreMatchers.either;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
@@ -178,9 +178,26 @@ public class CameraViewTest {
                     public void check(View view, NoMatchingViewException noViewFoundException) {
                         CameraView cameraView = (CameraView) view;
                         AspectRatio cameraRatio = cameraView.getAspectRatio();
-                        AspectRatio viewRatio = new AspectRatio(view.getWidth(), view.getHeight());
-                        assertThat(cameraRatio, is(either(equalTo(viewRatio))
-                                .or(equalTo(viewRatio.inverse()))));
+                        AspectRatio viewRatio = AspectRatio.of(view.getWidth(), view.getHeight());
+                        assertThat(cameraRatio, is(closeToOrInverse(viewRatio)));
+                    }
+                });
+    }
+
+    @Test
+    public void testTextureViewSize() {
+        onView(withId(R.id.camera))
+                .check(new ViewAssertion() {
+                    @Override
+                    public void check(View view, NoMatchingViewException noViewFoundException) {
+                        CameraView cameraView = (CameraView) view;
+                        TextureView textureView = (TextureView)
+                                view.findViewById(R.id.texture_view);
+                        AspectRatio cameraRatio = cameraView.getAspectRatio();
+                        assert cameraRatio != null;
+                        AspectRatio textureRatio = AspectRatio.of(
+                                textureView.getWidth(), textureView.getHeight());
+                        assertThat(textureRatio, is(closeToOrInverse(cameraRatio)));
                     }
                 });
     }

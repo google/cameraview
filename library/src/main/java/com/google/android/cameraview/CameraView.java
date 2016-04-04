@@ -38,6 +38,8 @@ public class CameraView extends FrameLayout {
 
     private boolean mAdjustViewBounds;
 
+    private TextureView mTextureView;
+
     public CameraView(Context context) {
         this(context, null);
     }
@@ -57,8 +59,8 @@ public class CameraView extends FrameLayout {
         }
         // View content
         inflate(context, R.layout.camera_view, this);
-        TextureView textureView = (TextureView) findViewById(R.id.texture_view);
-        textureView.setSurfaceTextureListener(mImpl.getSurfaceTextureListener());
+        mTextureView = (TextureView) findViewById(R.id.texture_view);
+        mTextureView.setSurfaceTextureListener(mImpl.getSurfaceTextureListener());
         // Attributes
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
                 R.style.Widget_CameraView);
@@ -68,6 +70,7 @@ public class CameraView extends FrameLayout {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        // Handle android:adjustViewBounds
         if (mAdjustViewBounds) {
             if (!isCameraOpened()) {
                 mCallbacks.reserveRequestLayoutOnOpen();
@@ -99,6 +102,26 @@ public class CameraView extends FrameLayout {
             }
         } else {
             super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        }
+        // Measure the TextureView
+        int width = getMeasuredWidth();
+        int height = getMeasuredHeight();
+        AspectRatio ratio = getAspectRatio();
+        int orientation = mImpl.getDisplayOrientation();
+        if (orientation == 90 || orientation == 270) {
+            ratio = ratio.inverse();
+        }
+        assert ratio != null;
+        if (height < width * ratio.getY() / ratio.getX()) {
+            mTextureView.measure(
+                    MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(width * ratio.getY() / ratio.getX(),
+                            MeasureSpec.EXACTLY));
+        } else {
+            mTextureView.measure(
+                    MeasureSpec.makeMeasureSpec(height * ratio.getX() / ratio.getY(),
+                            MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY));
         }
     }
 
@@ -179,7 +202,7 @@ public class CameraView extends FrameLayout {
     /**
      * Sets the aspect ratio of camera.
      *
-     * @param ratio The {@AspectRatio} to be set.
+     * @param ratio The {@link AspectRatio} to be set.
      */
     public void setAspectRatio(@NonNull AspectRatio ratio) {
         mImpl.setAspectRatio(ratio);

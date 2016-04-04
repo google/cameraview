@@ -50,7 +50,7 @@ public class SizeMap {
         // None of the existing ratio matches the provided size; add a new key
         List<Size> sizes = new ArrayList<>();
         sizes.add(size);
-        mRatios.put(new AspectRatio(size.getWidth(), size.getHeight()), sizes);
+        mRatios.put(AspectRatio.of(size.getWidth(), size.getHeight()), sizes);
         return true;
     }
 
