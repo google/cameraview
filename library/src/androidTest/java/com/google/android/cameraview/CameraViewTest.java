@@ -40,7 +40,7 @@ import android.view.ViewGroup;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.List;
+import java.util.Set;
 
 import static android.support.test.espresso.Espresso.onView;
 import static android.support.test.espresso.Espresso.registerIdlingResources;
@@ -120,7 +120,7 @@ public class CameraViewTest {
                         SizeMap map = cameraView.getSupportedPreviewSizes();
                         assertThat(map.ratios().size(), is(greaterThanOrEqualTo(1)));
                         for (AspectRatio ratio : map.ratios()) {
-                            final List<Size> sizes = map.sizes(ratio);
+                            final Set<Size> sizes = map.sizes(ratio);
                             assertThat(sizes.size(), is(is(greaterThanOrEqualTo(1))));
                         }
                     }

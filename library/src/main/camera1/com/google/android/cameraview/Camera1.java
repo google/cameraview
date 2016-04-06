@@ -19,13 +19,13 @@ package com.google.android.cameraview;
 import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
-import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.WindowManager;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Set;
+import java.util.SortedSet;
 
 @SuppressWarnings("deprecation")
 class Camera1 extends CameraViewImpl {
@@ -33,7 +33,6 @@ class Camera1 extends CameraViewImpl {
     private static final int INVALID_CAMERA_ID = -1;
 
     private static final AspectRatio DEFAULT_ASPECT_RATIO = AspectRatio.of(4, 3);
-    private static final String TAG = "Camera1";
 
     private final Context mContext;
 
@@ -73,6 +72,7 @@ class Camera1 extends CameraViewImpl {
             mPreviewInfo.configure(surface, width, height);
             if (mCamera != null) {
                 setUpPreview();
+                adjustPreviewSize();
             }
         }
 
@@ -81,6 +81,7 @@ class Camera1 extends CameraViewImpl {
             mPreviewInfo.configure(surface, width, height);
             if (mCamera != null) {
                 setUpPreview();
+                adjustPreviewSize();
             }
         }
 
@@ -118,15 +119,15 @@ class Camera1 extends CameraViewImpl {
 
     @Override
     void startPreview() {
-        setUpPreview();
+        if (mPreviewInfo.surface != null) {
+            setUpPreview();
+        }
         mCamera.startPreview();
     }
 
     private void setUpPreview() {
         try {
-            if (mPreviewInfo.surface != null) {
-                mCamera.setPreviewTexture(mPreviewInfo.surface);
-            }
+            mCamera.setPreviewTexture(mPreviewInfo.surface);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -153,14 +154,12 @@ class Camera1 extends CameraViewImpl {
             // Handle this later when camera is opened
             mAspectRatio = ratio;
         } else if (!mAspectRatio.equals(ratio)) {
-            final List<Size> sizes = mPreviewSizes.sizes(ratio);
+            final Set<Size> sizes = mPreviewSizes.sizes(ratio);
             if (sizes == null) {
                 throw new UnsupportedOperationException(ratio + " is not supported");
             } else {
                 mAspectRatio = ratio;
-                Size size = chooseOptimalSize(sizes);
-                mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
-                mCamera.setParameters(mCameraParameters);
+                adjustPreviewSize();
             }
         }
     }
@@ -205,14 +204,7 @@ class Camera1 extends CameraViewImpl {
         if (mAspectRatio == null) {
             mAspectRatio = DEFAULT_ASPECT_RATIO;
         }
-        final List<Size> sizes = mPreviewSizes.sizes(mAspectRatio);
-        if (sizes == null) { // Not supported
-            mAspectRatio = chooseAspectRatio();
-        }
-        Size size = chooseOptimalSize(sizes);
-        mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
-        Log.d(TAG, "openCamera: " + size.getWidth() + "x" + size.getHeight());
-        mCamera.setParameters(mCameraParameters);
+        adjustPreviewSize();
         // Display orientation
         mDisplayOrientation = calcDisplayOrientation();
         mCamera.setDisplayOrientation(mDisplayOrientation);
@@ -230,9 +222,39 @@ class Camera1 extends CameraViewImpl {
         return r;
     }
 
-    private Size chooseOptimalSize(List<Size> sizes) {
-        Log.d(TAG, "chooseOptimalSize: " + sizes.get(0));
-        return sizes.get(0); // TODO: Pick optimally
+    private void adjustPreviewSize() {
+        final SortedSet<Size> sizes = mPreviewSizes.sizes(mAspectRatio);
+        if (sizes == null) { // Not supported
+            mAspectRatio = chooseAspectRatio();
+        }
+        Size size = chooseOptimalSize(sizes);
+        mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
+        mCamera.setParameters(mCameraParameters);
+    }
+
+    @SuppressWarnings("SuspiciousNameCombination")
+    private Size chooseOptimalSize(SortedSet<Size> sizes) {
+        if (mPreviewInfo.width == 0 || mPreviewInfo.height == 0) { // Not yet laid out
+            return sizes.first(); // Return the smallest size
+        }
+        int desiredWidth;
+        int desiredHeight;
+        if (mDisplayOrientation == 90 || mDisplayOrientation == 270) {
+            desiredWidth = mPreviewInfo.height;
+            desiredHeight = mPreviewInfo.width;
+        } else {
+            desiredWidth = mPreviewInfo.width;
+            desiredHeight = mPreviewInfo.height;
+        }
+        Size result = null;
+        for (Size size : sizes) { // Iterate from small to large
+            if (desiredWidth <= size.getWidth() && desiredHeight <= size.getHeight()) {
+                return size;
+
+            }
+            result = size;
+        }
+        return result;
     }
 
     private void releaseCamera() {

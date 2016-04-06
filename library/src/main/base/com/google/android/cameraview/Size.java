@@ -16,10 +16,12 @@
 
 package com.google.android.cameraview;
 
+import android.support.annotation.NonNull;
+
 /**
  * Immutable class for describing width and height dimensions in pixels.
  */
-public class Size {
+public class Size implements Comparable<Size> {
 
     private final int mWidth;
     private final int mHeight;
@@ -67,6 +69,11 @@ public class Size {
     public int hashCode() {
         // assuming most sizes are <2^16, doing a rotate will give us perfect hashing
         return mHeight ^ ((mWidth << (Integer.SIZE / 2)) | (mWidth >>> (Integer.SIZE / 2)));
+    }
+
+    @Override
+    public int compareTo(@NonNull Size another) {
+        return mWidth * mHeight - another.mWidth * another.mHeight;
     }
 
 }

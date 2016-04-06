@@ -18,16 +18,16 @@ package com.google.android.cameraview;
 
 import android.support.v4.util.ArrayMap;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 /**
  * A collection class that automatically groups {@link Size}s by their {@link AspectRatio}s.
  */
 public class SizeMap {
 
-    private final ArrayMap<AspectRatio, List<Size>> mRatios = new ArrayMap<>();
+    private final ArrayMap<AspectRatio, SortedSet<Size>> mRatios = new ArrayMap<>();
 
     /**
      * Add a new {@link Size} to this collection.
@@ -38,7 +38,7 @@ public class SizeMap {
     public boolean add(Size size) {
         for (AspectRatio ratio : mRatios.keySet()) {
             if (ratio.matches(size)) {
-                final List<Size> sizes = mRatios.get(ratio);
+                final SortedSet<Size> sizes = mRatios.get(ratio);
                 if (sizes.contains(size)) {
                     return false;
                 } else {
@@ -48,7 +48,7 @@ public class SizeMap {
             }
         }
         // None of the existing ratio matches the provided size; add a new key
-        List<Size> sizes = new ArrayList<>();
+        SortedSet<Size> sizes = new TreeSet<>();
         sizes.add(size);
         mRatios.put(AspectRatio.of(size.getWidth(), size.getHeight()), sizes);
         return true;
@@ -58,7 +58,7 @@ public class SizeMap {
         return mRatios.keySet();
     }
 
-    public List<Size> sizes(AspectRatio ratio) {
+    public SortedSet<Size> sizes(AspectRatio ratio) {
         return mRatios.get(ratio);
     }
 
