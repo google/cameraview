@@ -28,13 +28,9 @@ abstract class CameraViewImpl {
 
     abstract TextureView.SurfaceTextureListener getSurfaceTextureListener();
 
-    abstract void onResume();
+    abstract void start();
 
-    abstract void onPause();
-
-    abstract void startPreview();
-
-    abstract void stopPreview();
+    abstract void stop();
 
     abstract SizeMap getSupportedPreviewSizes();
 

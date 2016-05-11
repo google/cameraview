@@ -30,8 +30,6 @@ import java.util.ArrayList;
 
 public class CameraView extends FrameLayout {
 
-    private static final String TAG = "CameraView";
-
     private final CameraViewImpl mImpl;
 
     private final CallbackBridge mCallbacks;
@@ -126,25 +124,19 @@ public class CameraView extends FrameLayout {
     }
 
     /**
-     * This needs to be called from {@link Activity#onResume()}.
+     * Open a camera device and start showing camera preview. This is typically called from
+     * {@link Activity#onResume()}.
      */
-    public void onResume() {
-        mImpl.onResume();
+    public void start() {
+        mImpl.start();
     }
 
     /**
-     * This needs to be called from {@link Activity#onPause()}.
+     * Stop camera preview and close the device. This is typically called from
+     * {@link Activity#onPause()}.
      */
-    public void onPause() {
-        mImpl.onPause();
-    }
-
-    public void startPreview() {
-        mImpl.startPreview();
-    }
-
-    public void stopPreview() {
-        mImpl.stopPreview();
+    public void stop() {
+        mImpl.stop();
     }
 
     public SizeMap getSupportedPreviewSizes() {

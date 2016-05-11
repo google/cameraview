@@ -107,22 +107,19 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
-    void onResume() {
+    void start() {
         chooseCamera();
         openCamera();
-    }
-
-    @Override
-    void onPause() {
-        releaseCamera();
-    }
-
-    @Override
-    void startPreview() {
         if (mPreviewInfo.surface != null) {
             setUpPreview();
         }
         mCamera.startPreview();
+    }
+
+    @Override
+    void stop() {
+        mCamera.stopPreview();
+        releaseCamera();
     }
 
     private void setUpPreview() {
@@ -131,11 +128,6 @@ class Camera1 extends CameraViewImpl {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    @Override
-    void stopPreview() {
-        mCamera.stopPreview();
     }
 
     @Override
