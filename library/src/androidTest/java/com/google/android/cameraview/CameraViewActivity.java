@@ -33,14 +33,12 @@ public class CameraViewActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        mCameraView.onResume();
-        mCameraView.startPreview();
+        mCameraView.start();
     }
 
     @Override
     protected void onPause() {
-        mCameraView.stopPreview();
-        mCameraView.onPause();
+        mCameraView.stop();
         super.onPause();
     }
 
