@@ -13,4 +13,6 @@
 -->
 <resources>
     <string name="app_name">CameraView Demo</string>
+    <string name="permission_confirmation">This app demonstrates the usage of CameraView. In order to do that, it needs permission to access camera.</string>
+    <string name="permission_not_granted">Camera app cannot do anything without camera permission.</string>
 </resources>

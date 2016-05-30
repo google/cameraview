@@ -52,6 +52,8 @@ class Camera1 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
+    private boolean mShowingPreview;
+
     private static class PreviewInfo {
         SurfaceTexture surface;
         int width;
@@ -113,12 +115,16 @@ class Camera1 extends CameraViewImpl {
         if (mPreviewInfo.surface != null) {
             setUpPreview();
         }
+        mShowingPreview = true;
         mCamera.startPreview();
     }
 
     @Override
     void stop() {
-        mCamera.stopPreview();
+        if (mCamera != null) {
+            mCamera.stopPreview();
+        }
+        mShowingPreview = false;
         releaseCamera();
     }
 
@@ -220,8 +226,17 @@ class Camera1 extends CameraViewImpl {
             mAspectRatio = chooseAspectRatio();
         }
         Size size = chooseOptimalSize(sizes);
-        mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
-        mCamera.setParameters(mCameraParameters);
+        final Camera.Size currentSize = mCameraParameters.getPictureSize();
+        if (currentSize.width != size.getWidth() || currentSize.height != size.getHeight()) {
+            if (mShowingPreview) {
+                mCamera.stopPreview();
+            }
+            mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
+            mCamera.setParameters(mCameraParameters);
+            if (mShowingPreview) {
+                mCamera.startPreview();
+            }
+        }
     }
 
     @SuppressWarnings("SuspiciousNameCombination")
