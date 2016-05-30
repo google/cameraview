@@ -16,32 +16,14 @@
 
 package com.google.android.cameraview;
 
-import com.google.android.cameraview.test.R;
 
-import android.app.Activity;
-import android.os.Bundle;
+interface Constants {
 
-public class CameraViewActivity extends Activity {
-
-    private CameraView mCameraView;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_camera_view);
-        mCameraView = (CameraView) findViewById(R.id.camera);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        mCameraView.start();
-    }
-
-    @Override
-    protected void onPause() {
-        mCameraView.stop();
-        super.onPause();
-    }
+    int FOCUS_MODE_OFF = 0;
+    int FOCUS_MODE_AUTO = 1;
+    int FOCUS_MODE_MACRO = 2;
+    int FOCUS_MODE_CONTINUOUS_PICTURE = 3;
+    int FOCUS_MODE_CONTINUOUS_VIDEO = 4;
+    int FOCUS_MODE_EDOF = 5;
 
 }

@@ -20,15 +20,31 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.os.Build;
+import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.view.TextureView;
 import android.widget.FrameLayout;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 
 public class CameraView extends FrameLayout {
+
+    public static final int FOCUS_MODE_OFF = Constants.FOCUS_MODE_OFF;
+    public static final int FOCUS_MODE_AUTO = Constants.FOCUS_MODE_AUTO;
+    public static final int FOCUS_MODE_MACRO = Constants.FOCUS_MODE_MACRO;
+    public static final int FOCUS_MODE_CONTINUOUS_PICTURE = Constants.FOCUS_MODE_CONTINUOUS_PICTURE;
+    public static final int FOCUS_MODE_CONTINUOUS_VIDEO = Constants.FOCUS_MODE_CONTINUOUS_VIDEO;
+    public static final int FOCUS_MODE_EDOF = Constants.FOCUS_MODE_EDOF;
+
+    @IntDef({FOCUS_MODE_OFF, FOCUS_MODE_AUTO, FOCUS_MODE_MACRO, FOCUS_MODE_CONTINUOUS_PICTURE,
+            FOCUS_MODE_CONTINUOUS_VIDEO, FOCUS_MODE_EDOF})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface FocusMode {
+    }
 
     private final CameraViewImpl mImpl;
 
@@ -63,6 +79,8 @@ public class CameraView extends FrameLayout {
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
                 R.style.Widget_CameraView);
         mAdjustViewBounds = a.getBoolean(R.styleable.CameraView_android_adjustViewBounds, false);
+        //noinspection WrongConstant
+        setFocusMode(a.getInt(R.styleable.CameraView_focusMode, FOCUS_MODE_OFF));
         a.recycle();
     }
 
@@ -208,6 +226,29 @@ public class CameraView extends FrameLayout {
     @Nullable
     public AspectRatio getAspectRatio() {
         return mImpl.getAspectRatio();
+    }
+
+    /**
+     * Sets the focus mode.
+     *
+     * @param focusMode The focus mode. Must be one of {@link #FOCUS_MODE_OFF},
+     *                  {@link #FOCUS_MODE_AUTO}, {@link #FOCUS_MODE_MACRO},
+     *                  {@link #FOCUS_MODE_CONTINUOUS_PICTURE},
+     *                  {@link #FOCUS_MODE_CONTINUOUS_VIDEO}, and {@link #FOCUS_MODE_EDOF}.
+     */
+    public void setFocusMode(@FocusMode int focusMode) {
+        mImpl.setFocusMode(focusMode);
+    }
+
+    /**
+     * Gets the current focus mode.
+     *
+     * @return The current focus mode.
+     */
+    @FocusMode
+    public int getFocusMode() {
+        //noinspection WrongConstant
+        return mImpl.getFocusMode();
     }
 
     private class CallbackBridge implements CameraViewImpl.Callback {

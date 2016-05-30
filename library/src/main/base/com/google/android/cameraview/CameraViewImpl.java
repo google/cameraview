@@ -42,6 +42,10 @@ abstract class CameraViewImpl {
 
     abstract int getDisplayOrientation();
 
+    abstract void setFocusMode(int focusMode);
+
+    abstract int getFocusMode();
+
     interface Callback {
 
         void onCameraOpened();

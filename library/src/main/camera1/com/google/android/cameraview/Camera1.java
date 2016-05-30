@@ -54,6 +54,8 @@ class Camera1 extends CameraViewImpl {
 
     private boolean mShowingPreview;
 
+    private int mFocusMode;
+
     private static class PreviewInfo {
         SurfaceTexture surface;
         int width;
@@ -69,8 +71,7 @@ class Camera1 extends CameraViewImpl {
     private final TextureView.SurfaceTextureListener mSurfaceTextureListener
             = new TextureView.SurfaceTextureListener() {
 
-        @Override
-        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+        private void reconfigurePreview(SurfaceTexture surface, int width, int height) {
             mPreviewInfo.configure(surface, width, height);
             if (mCamera != null) {
                 setUpPreview();
@@ -79,12 +80,13 @@ class Camera1 extends CameraViewImpl {
         }
 
         @Override
+        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+            reconfigurePreview(surface, width, height);
+        }
+
+        @Override
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-            mPreviewInfo.configure(surface, width, height);
-            if (mCamera != null) {
-                setUpPreview();
-                adjustPreviewSize();
-            }
+            reconfigurePreview(surface, width, height);
         }
 
         @Override
@@ -172,6 +174,22 @@ class Camera1 extends CameraViewImpl {
         return mDisplayOrientation;
     }
 
+    @Override
+    void setFocusMode(int focusMode) {
+        if (mFocusMode != focusMode) {
+            mFocusMode = focusMode;
+            if (mCamera != null) {
+                mCameraParameters.setFocusMode(Camera1Constants.convertFocusMode(focusMode));
+                mCamera.setParameters(mCameraParameters);
+            }
+        }
+    }
+
+    @Override
+    int getFocusMode() {
+        return mFocusMode;
+    }
+
     /**
      * This rewrites {@link #mCameraId} and {@link #mCameraInfo}.
      */
@@ -232,6 +250,7 @@ class Camera1 extends CameraViewImpl {
                 mCamera.stopPreview();
             }
             mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
+            mCameraParameters.setFocusMode(Camera1Constants.convertFocusMode(mFocusMode));
             mCamera.setParameters(mCameraParameters);
             if (mShowingPreview) {
                 mCamera.startPreview();

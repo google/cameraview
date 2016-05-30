@@ -16,6 +16,8 @@
 
 package com.google.android.cameraview;
 
+import com.google.android.cameraview.test.R;
+
 import org.hamcrest.Matcher;
 import org.hamcrest.core.IsAnything;
 import org.junit.After;
@@ -198,6 +200,21 @@ public class CameraViewTest {
                         AspectRatio textureRatio = AspectRatio.of(
                                 textureView.getWidth(), textureView.getHeight());
                         assertThat(textureRatio, is(closeToOrInverse(cameraRatio)));
+                    }
+                });
+    }
+
+    @Test
+    public void testFocusMode() {
+        onView(withId(R.id.camera))
+                .check(new ViewAssertion() {
+                    @Override
+                    public void check(View view, NoMatchingViewException noViewFoundException) {
+                        CameraView cameraView = (CameraView) view;
+                        assertThat(cameraView.getFocusMode(), is(CameraView.FOCUS_MODE_OFF));
+                        cameraView.setFocusMode(CameraView.FOCUS_MODE_CONTINUOUS_PICTURE);
+                        assertThat(cameraView.getFocusMode(),
+                                is(CameraView.FOCUS_MODE_CONTINUOUS_PICTURE));
                     }
                 });
     }

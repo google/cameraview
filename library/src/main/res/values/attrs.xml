@@ -14,5 +14,13 @@
 <resources>
     <declare-styleable name="CameraView">
         <attr name="android:adjustViewBounds"/>
+        <attr name="focusMode" format="enum">
+            <enum name="off" value="0"/>
+            <enum name="auto" value="1"/>
+            <enum name="macro" value="2"/>
+            <enum name="continuousPicture" value="3"/>
+            <enum name="continuousVideo" value="4"/>
+            <enum name="edof" value="5"/>
+        </attr>
     </declare-styleable>
 </resources>
