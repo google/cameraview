@@ -26,4 +26,8 @@ interface Constants {
     int FOCUS_MODE_CONTINUOUS_VIDEO = 4;
     int FOCUS_MODE_EDOF = 5;
 
+    int FACING_BACK = 0;
+    int FACING_FRONT = 1;
+    int FACING_EXTERNAL = 2;
+
 }

@@ -34,6 +34,8 @@ class Camera1 extends CameraViewImpl {
 
     private static final AspectRatio DEFAULT_ASPECT_RATIO = AspectRatio.of(4, 3);
 
+    private static final String TAG = "Camera1";
+
     private final Context mContext;
 
     private int mCameraId;
@@ -55,6 +57,8 @@ class Camera1 extends CameraViewImpl {
     private boolean mShowingPreview;
 
     private int mFocusMode;
+
+    private int mFacing;
 
     private static class PreviewInfo {
         SurfaceTexture surface;
@@ -190,14 +194,29 @@ class Camera1 extends CameraViewImpl {
         return mFocusMode;
     }
 
+    @Override
+    void setFacing(int facing) {
+        if (mFacing != facing) {
+            mFacing = facing;
+            if (mCamera != null) {
+                stop();
+                start();
+            }
+        }
+    }
+
+    @Override
+    int getFacing() {
+        return mFacing;
+    }
+
     /**
      * This rewrites {@link #mCameraId} and {@link #mCameraInfo}.
      */
     private void chooseCamera() {
         for (int i = 0, count = Camera.getNumberOfCameras(); i < count; i++) {
             Camera.getCameraInfo(i, mCameraInfo);
-            // TODO: Just choose the back-facing camera for now
-            if (mCameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
+            if (mCameraInfo.facing == mFacing) {
                 mCameraId = i;
                 return;
             }

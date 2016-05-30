@@ -95,21 +95,9 @@ public class CameraViewTest {
     @Test
     @FlakyTest
     public void preview_isShowing() throws Exception {
-        onView(withId(R.id.texture_view))
-                .perform(new WaitAction(1000))
-                .check(new ViewAssertion() {
-                    @Override
-                    public void check(View view, NoMatchingViewException noViewFoundException) {
-                        TextureView textureView = (TextureView) view;
-                        Bitmap bitmap = textureView.getBitmap();
-                        int topLeft = bitmap.getPixel(0, 0);
-                        int center = bitmap.getPixel(bitmap.getWidth() / 2, bitmap.getHeight() / 2);
-                        int bottomRight = bitmap.getPixel(
-                                bitmap.getWidth() - 1, bitmap.getHeight() - 1);
-                        assertFalse("Preview possibly blank: " + Integer.toHexString(topLeft),
-                                topLeft == center && center == bottomRight);
-                    }
-                });
+        onView(withId(R.id.camera))
+                .perform(waitFor(1000))
+                .check(showingPreview());
     }
 
     @Test
@@ -219,6 +207,48 @@ public class CameraViewTest {
                 });
     }
 
+    @Test
+    public void testFacing() {
+        onView(withId(R.id.camera))
+                .check(new ViewAssertion() {
+                    @Override
+                    public void check(View view, NoMatchingViewException noViewFoundException) {
+                        CameraView cameraView = (CameraView) view;
+                        assertThat(cameraView.getFacing(), is(CameraView.FACING_BACK));
+                        cameraView.setFacing(CameraView.FACING_FRONT);
+                        assertThat(cameraView.getFacing(), is(CameraView.FACING_FRONT));
+                    }
+                })
+                .perform(waitFor(1000))
+                .check(showingPreview());
+    }
+
+    private static ViewAction waitFor(final long ms) {
+        return new AnythingAction("wait") {
+            @Override
+            public void perform(UiController uiController, View view) {
+                SystemClock.sleep(ms);
+            }
+        };
+    }
+
+    private static ViewAssertion showingPreview() {
+        return new ViewAssertion() {
+            @Override
+            public void check(View view, NoMatchingViewException noViewFoundException) {
+                CameraView cameraView = (CameraView) view;
+                TextureView textureView = (TextureView) cameraView.findViewById(R.id.texture_view);
+                Bitmap bitmap = textureView.getBitmap();
+                int topLeft = bitmap.getPixel(0, 0);
+                int center = bitmap.getPixel(bitmap.getWidth() / 2, bitmap.getHeight() / 2);
+                int bottomRight = bitmap.getPixel(
+                        bitmap.getWidth() - 1, bitmap.getHeight() - 1);
+                assertFalse("Preview possibly blank: " + Integer.toHexString(topLeft),
+                        topLeft == center && center == bottomRight);
+            }
+        };
+    }
+
     /**
      * Wait for a camera to open.
      */
@@ -277,22 +307,6 @@ public class CameraViewTest {
 
     }
 
-    private static class WaitAction extends AnythingAction {
-
-        private final long mMs;
-
-        public WaitAction(long ms) {
-            super("wait");
-            mMs = ms;
-        }
-
-        @Override
-        public void perform(UiController uiController, View view) {
-            SystemClock.sleep(mMs);
-        }
-
-    }
-
     private static abstract class AnythingAction implements ViewAction {
 
         private final String mDescription;
@@ -310,6 +324,7 @@ public class CameraViewTest {
         public String getDescription() {
             return mDescription;
         }
+
     }
 
 }

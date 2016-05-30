@@ -22,5 +22,10 @@
             <enum name="continuousVideo" value="4"/>
             <enum name="edof" value="5"/>
         </attr>
+        <attr name="facing" format="enum">
+            <enum name="back" value="0"/>
+            <enum name="front" value="1"/>
+            <enum name="external" value="2"/>
+        </attr>
     </declare-styleable>
 </resources>

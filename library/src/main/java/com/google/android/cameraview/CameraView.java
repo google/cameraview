@@ -46,6 +46,15 @@ public class CameraView extends FrameLayout {
     public @interface FocusMode {
     }
 
+    public static final int FACING_BACK = Constants.FACING_BACK;
+    public static final int FACING_FRONT = Constants.FACING_FRONT;
+    public static final int FACING_EXTERNAL = Constants.FACING_EXTERNAL;
+
+    @IntDef({FACING_BACK, FACING_FRONT, FACING_EXTERNAL})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface Facing {
+    }
+
     private final CameraViewImpl mImpl;
 
     private final CallbackBridge mCallbacks;
@@ -62,6 +71,7 @@ public class CameraView extends FrameLayout {
         this(context, attrs, 0);
     }
 
+    @SuppressWarnings("WrongConstant")
     public CameraView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         // Internal setup
@@ -79,8 +89,8 @@ public class CameraView extends FrameLayout {
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
                 R.style.Widget_CameraView);
         mAdjustViewBounds = a.getBoolean(R.styleable.CameraView_android_adjustViewBounds, false);
-        //noinspection WrongConstant
         setFocusMode(a.getInt(R.styleable.CameraView_focusMode, FOCUS_MODE_OFF));
+        setFacing(a.getInt(R.styleable.CameraView_facing, FACING_BACK));
         a.recycle();
     }
 
@@ -249,6 +259,27 @@ public class CameraView extends FrameLayout {
     public int getFocusMode() {
         //noinspection WrongConstant
         return mImpl.getFocusMode();
+    }
+
+    /**
+     * Chooses camera by the direction it faces.
+     *
+     * @param facing The camera facing. Must be one of {@link #FACING_BACK},
+     *               {@link #FACING_FRONT}, and {@link #FACING_EXTERNAL}
+     */
+    public void setFacing(@Facing int facing) {
+        mImpl.setFacing(facing);
+    }
+
+    /**
+     * Gets the direction that the current camera faces.
+     *
+     * @return The camera facing.
+     */
+    @Facing
+    public int getFacing() {
+        //noinspection WrongConstant
+        return mImpl.getFacing();
     }
 
     private class CallbackBridge implements CameraViewImpl.Callback {

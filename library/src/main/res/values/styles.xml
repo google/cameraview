@@ -16,6 +16,7 @@
     <style name="Widget.CameraView" parent="android:Widget">
         <item name="android:adjustViewBounds">false</item>
         <item name="focusMode">off</item>
+        <item name="facing">back</item>
     </style>
 
 </resources>

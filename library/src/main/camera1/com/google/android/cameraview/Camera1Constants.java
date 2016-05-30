@@ -28,7 +28,7 @@ class Camera1Constants {
     static String convertFocusMode(int focusMode) {
         if (sFocusModesMap == null) {
             sFocusModesMap = new SparseArrayCompat<>();
-            sFocusModesMap.put(Constants.FOCUS_MODE_OFF, Camera.Parameters.FOCUS_MODE_FIXED);
+            sFocusModesMap.put(Constants.FOCUS_MODE_OFF, Camera.Parameters.FOCUS_MODE_INFINITY);
             sFocusModesMap.put(Constants.FOCUS_MODE_AUTO, Camera.Parameters.FOCUS_MODE_AUTO);
             sFocusModesMap.put(Constants.FOCUS_MODE_MACRO, Camera.Parameters.FOCUS_MODE_MACRO);
             sFocusModesMap.put(Constants.FOCUS_MODE_CONTINUOUS_PICTURE,

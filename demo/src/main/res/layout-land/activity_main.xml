@@ -24,6 +24,7 @@
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:adjustViewBounds="true"
-        app:focusMode="continuousPicture"/>
+        app:focusMode="continuousPicture"
+        app:facing="back"/>
 
 </FrameLayout>
