@@ -14,5 +14,7 @@
 <resources>
     <color name="primary">#3F51B5</color>
     <color name="primaryDark">#303F9F</color>
-    <color name="accent">#FF4081</color>
+    <color name="accent">#4CAF50</color>
+    <color name="primaryText">#212121</color>
+    <color name="secondaryText">#727272</color>
 </resources>

@@ -25,7 +25,7 @@ import java.util.TreeSet;
 /**
  * A collection class that automatically groups {@link Size}s by their {@link AspectRatio}s.
  */
-public class SizeMap {
+class SizeMap {
 
     private final ArrayMap<AspectRatio, SortedSet<Size>> mRatios = new ArrayMap<>();
 

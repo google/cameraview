@@ -50,6 +50,8 @@ class Camera1 extends CameraViewImpl {
 
     private final SizeMap mPreviewSizes = new SizeMap();
 
+    private final SizeMap mPictureSizes = new SizeMap();
+
     private AspectRatio mAspectRatio;
 
     private int mDisplayOrientation;
@@ -59,6 +61,8 @@ class Camera1 extends CameraViewImpl {
     private int mFocusMode;
 
     private int mFacing;
+
+    private int mOrientation;
 
     private static class PreviewInfo {
         SurfaceTexture surface;
@@ -79,7 +83,7 @@ class Camera1 extends CameraViewImpl {
             mPreviewInfo.configure(surface, width, height);
             if (mCamera != null) {
                 setUpPreview();
-                adjustPreviewSize();
+                adjustCameraParameters();
             }
         }
 
@@ -143,11 +147,6 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
-    SizeMap getSupportedPreviewSizes() {
-        return mPreviewSizes;
-    }
-
-    @Override
     boolean isCameraOpened() {
         return mCamera != null;
     }
@@ -163,7 +162,7 @@ class Camera1 extends CameraViewImpl {
                 throw new UnsupportedOperationException(ratio + " is not supported");
             } else {
                 mAspectRatio = ratio;
-                adjustPreviewSize();
+                adjustCameraParameters();
             }
         }
     }
@@ -210,6 +209,34 @@ class Camera1 extends CameraViewImpl {
         return mFacing;
     }
 
+    @Override
+    void takePicture() {
+        if (!isCameraOpened()) {
+            throw new IllegalStateException("Camera is not ready. Call start() before takePicture().");
+        }
+        mCamera.takePicture(null, null, null, new Camera.PictureCallback() {
+            @Override
+            public void onPictureTaken(byte[] data, Camera camera) {
+                mCallback.onPictureTaken(data);
+                camera.startPreview();
+            }
+        });
+    }
+
+    @Override
+    void setOrientation(int orientation) {
+        if (mOrientation != orientation) {
+            mOrientation = orientation;
+            if (isCameraOpened()) {
+                calcRotation(mCameraParameters);
+                mCamera.setParameters(mCameraParameters);
+
+                mDisplayOrientation = calcDisplayOrientation();
+                mCamera.setDisplayOrientation(mDisplayOrientation);
+            }
+        }
+    }
+
     /**
      * This rewrites {@link #mCameraId} and {@link #mCameraInfo}.
      */
@@ -235,11 +262,16 @@ class Camera1 extends CameraViewImpl {
         for (Camera.Size size : mCameraParameters.getSupportedPreviewSizes()) {
             mPreviewSizes.add(new Size(size.width, size.height));
         }
+        // Supported picture sizes;
+        mPictureSizes.clear();
+        for (Camera.Size size : mCameraParameters.getSupportedPictureSizes()) {
+            mPictureSizes.add(new Size(size.width, size.height));
+        }
         // AspectRatio
         if (mAspectRatio == null) {
             mAspectRatio = DEFAULT_ASPECT_RATIO;
         }
-        adjustPreviewSize();
+        adjustCameraParameters();
         // Display orientation
         mDisplayOrientation = calcDisplayOrientation();
         mCamera.setDisplayOrientation(mDisplayOrientation);
@@ -257,7 +289,7 @@ class Camera1 extends CameraViewImpl {
         return r;
     }
 
-    private void adjustPreviewSize() {
+    private void adjustCameraParameters() {
         final SortedSet<Size> sizes = mPreviewSizes.sizes(mAspectRatio);
         if (sizes == null) { // Not supported
             mAspectRatio = chooseAspectRatio();
@@ -265,16 +297,30 @@ class Camera1 extends CameraViewImpl {
         Size size = chooseOptimalSize(sizes);
         final Camera.Size currentSize = mCameraParameters.getPictureSize();
         if (currentSize.width != size.getWidth() || currentSize.height != size.getHeight()) {
+            // Largest picture size in this ratio
+            final Size pictureSize = mPictureSizes.sizes(mAspectRatio).last();
             if (mShowingPreview) {
                 mCamera.stopPreview();
             }
             mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
+            mCameraParameters.setPictureSize(pictureSize.getWidth(), pictureSize.getHeight());
+            calcRotation(mCameraParameters);
             mCameraParameters.setFocusMode(Camera1Constants.convertFocusMode(mFocusMode));
             mCamera.setParameters(mCameraParameters);
             if (mShowingPreview) {
                 mCamera.startPreview();
             }
         }
+    }
+
+    private void calcRotation(Camera.Parameters parameters) {
+        int rotation;
+        if (mCameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            rotation = (mCameraInfo.orientation - mOrientation + 360) % 360;
+        } else {  // back-facing camera
+            rotation = (mCameraInfo.orientation + mOrientation) % 360;
+        }
+        parameters.setRotation(rotation);
     }
 
     @SuppressWarnings("SuspiciousNameCombination")

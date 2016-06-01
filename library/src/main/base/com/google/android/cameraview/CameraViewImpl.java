@@ -32,8 +32,6 @@ abstract class CameraViewImpl {
 
     abstract void stop();
 
-    abstract SizeMap getSupportedPreviewSizes();
-
     abstract boolean isCameraOpened();
 
     abstract void setAspectRatio(AspectRatio ratio);
@@ -50,11 +48,18 @@ abstract class CameraViewImpl {
 
     abstract int getFacing();
 
+    abstract void takePicture();
+
+    abstract void setOrientation(int orientation);
+
     interface Callback {
 
         void onCameraOpened();
 
         void onCameraClosed();
 
+        void onPictureTaken(byte[] data);
+
     }
+
 }

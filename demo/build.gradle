@@ -26,6 +26,7 @@ android {
         versionCode 1
         versionName '1.0'
         testInstrumentationRunner 'android.support.test.runner.AndroidJUnitRunner'
+        vectorDrawables.useSupportLibrary = true
     }
     buildTypes {
         release {
@@ -37,7 +38,7 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile "com.android.support:appcompat-v7:$supportLibraryVersion"
+    compile "com.android.support:design:$supportLibraryVersion"
     compile project(':library')
 
     // Tests

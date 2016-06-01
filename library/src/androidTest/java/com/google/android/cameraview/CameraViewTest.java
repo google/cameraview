@@ -101,23 +101,6 @@ public class CameraViewTest {
     }
 
     @Test
-    public void getSupportedPreviewSizes() {
-        onView(withId(R.id.camera))
-                .check(new ViewAssertion() {
-                    @Override
-                    public void check(View view, NoMatchingViewException noViewFoundException) {
-                        CameraView cameraView = (CameraView) view;
-                        SizeMap map = cameraView.getSupportedPreviewSizes();
-                        assertThat(map.ratios().size(), is(greaterThanOrEqualTo(1)));
-                        for (AspectRatio ratio : map.ratios()) {
-                            final Set<Size> sizes = map.sizes(ratio);
-                            assertThat(sizes.size(), is(is(greaterThanOrEqualTo(1))));
-                        }
-                    }
-                });
-    }
-
-    @Test
     public void testAspectRatio() {
         onView(withId(R.id.camera))
                 .check(new ViewAssertion() {
@@ -126,19 +109,6 @@ public class CameraViewTest {
                         CameraView cameraView = (CameraView) view;
                         AspectRatio ratio = cameraView.getAspectRatio();
                         assertThat(ratio, is(notNullValue()));
-                        SizeMap map = cameraView.getSupportedPreviewSizes();
-                        assertThat(map.ratios(), hasItem(ratio));
-                        AspectRatio otherRatio = null;
-                        for (AspectRatio r : map.ratios()) {
-                            if (!r.equals(ratio)) {
-                                otherRatio = r;
-                                break;
-                            }
-                        }
-                        if (otherRatio != null) {
-                            cameraView.setAspectRatio(otherRatio);
-                            assertThat(cameraView.getAspectRatio(), is(equalTo(otherRatio)));
-                        }
                     }
                 });
     }
@@ -223,6 +193,30 @@ public class CameraViewTest {
                 .check(showingPreview());
     }
 
+    @Test
+    public void testTakePicture() throws Exception {
+        TakePictureIdlingResource resource = new TakePictureIdlingResource(
+                (CameraView) rule.getActivity().findViewById(R.id.camera));
+        onView(withId(R.id.camera))
+                .perform(new AnythingAction("take picture") {
+                    @Override
+                    public void perform(UiController uiController, View view) {
+                        CameraView cameraView = (CameraView) view;
+                        cameraView.takePicture();
+                    }
+                });
+        try {
+            registerIdlingResources(resource);
+            onView(withId(R.id.camera))
+                    .perform(waitFor(1000))
+                    .check(showingPreview());
+            assertThat("Didn't receive valid JPEG data.", resource.receivedValidJpeg(), is(true));
+        } finally {
+            unregisterIdlingResources(resource);
+            resource.close();
+        }
+    }
+
     private static ViewAction waitFor(final long ms) {
         return new AnythingAction("wait") {
             @Override
@@ -303,6 +297,62 @@ public class CameraViewTest {
         @Override
         public void registerIdleTransitionCallback(ResourceCallback callback) {
             mResourceCallback = callback;
+        }
+
+    }
+
+    private static class TakePictureIdlingResource implements IdlingResource, Closeable {
+
+        private final CameraView.Callback mCallback
+                = new CameraView.Callback() {
+            @Override
+            public void onPictureTaken(CameraView cameraView, byte[] data) {
+                if (!mIsIdleNow) {
+                    mIsIdleNow = true;
+                    mValidJpeg = data.length > 2 &&
+                            data[0] == (byte) 0xFF && data[1] == (byte) 0xD8;
+                    if (mResourceCallback != null) {
+                        mResourceCallback.onTransitionToIdle();
+                    }
+                }
+            }
+        };
+
+        private final CameraView mCameraView;
+
+        private ResourceCallback mResourceCallback;
+
+        private boolean mIsIdleNow;
+
+        private boolean mValidJpeg;
+
+        public TakePictureIdlingResource(CameraView cameraView) {
+            mCameraView = cameraView;
+            mCameraView.addCallback(mCallback);
+        }
+
+        @Override
+        public void close() throws IOException {
+            mCameraView.removeCallback(mCallback);
+        }
+
+        @Override
+        public String getName() {
+            return TakePictureIdlingResource.class.getSimpleName();
+        }
+
+        @Override
+        public boolean isIdleNow() {
+            return mIsIdleNow;
+        }
+
+        @Override
+        public void registerIdleTransitionCallback(ResourceCallback callback) {
+            mResourceCallback = callback;
+        }
+
+        public boolean receivedValidJpeg() {
+            return mValidJpeg;
         }
 
     }

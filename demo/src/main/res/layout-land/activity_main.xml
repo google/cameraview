@@ -11,20 +11,24 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 -->
-<FrameLayout
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:baselineAligned="false"
+    android:orientation="horizontal"
     tools:context=".MainActivity">
 
-    <com.google.android.cameraview.CameraView
-        android:id="@+id/camera"
+    <include
+        layout="@layout/include_camera"
         android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:adjustViewBounds="true"
-        app:focusMode="continuousPicture"
-        app:facing="back"/>
+        android:layout_height="match_parent"/>
 
-</FrameLayout>
+    <include
+        layout="@layout/include_control"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"/>
+
+</LinearLayout>

@@ -24,6 +24,7 @@ import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
+import android.view.OrientationEventListener;
 import android.view.TextureView;
 import android.widget.FrameLayout;
 
@@ -63,6 +64,8 @@ public class CameraView extends FrameLayout {
 
     private TextureView mTextureView;
 
+    private OrientationEventListener mOrientationEventListener;
+
     public CameraView(Context context) {
         this(context, null);
     }
@@ -92,6 +95,22 @@ public class CameraView extends FrameLayout {
         setFocusMode(a.getInt(R.styleable.CameraView_focusMode, FOCUS_MODE_OFF));
         setFacing(a.getInt(R.styleable.CameraView_facing, FACING_BACK));
         a.recycle();
+        // Orientation listener
+        mOrientationEventListener = new OrientationEventListener(context) {
+            private int mLastOrientation;
+            @Override
+            public void onOrientationChanged(int orientation) {
+                if (orientation == OrientationEventListener.ORIENTATION_UNKNOWN) {
+                    return;
+                }
+                // Round the value to one of 0, 90, 180, and 270
+                orientation = ((orientation + 45) / 90 * 90) % 360;
+                if (mLastOrientation != orientation) {
+                    mLastOrientation = orientation;
+                    mImpl.setOrientation(orientation);
+                }
+            }
+        };
     }
 
     @Override
@@ -156,6 +175,7 @@ public class CameraView extends FrameLayout {
      * {@link Activity#onResume()}.
      */
     public void start() {
+        mOrientationEventListener.enable();
         mImpl.start();
     }
 
@@ -165,10 +185,7 @@ public class CameraView extends FrameLayout {
      */
     public void stop() {
         mImpl.stop();
-    }
-
-    public SizeMap getSupportedPreviewSizes() {
-        return mImpl.getSupportedPreviewSizes();
+        mOrientationEventListener.disable();
     }
 
     /**
@@ -282,6 +299,14 @@ public class CameraView extends FrameLayout {
         return mImpl.getFacing();
     }
 
+    /**
+     * Take a picture. The result will be returned to
+     * {@link Callback#onPictureTaken(CameraView, byte[])}.
+     */
+    public void takePicture() {
+        mImpl.takePicture();
+    }
+
     private class CallbackBridge implements CameraViewImpl.Callback {
 
         private final ArrayList<Callback> mCallbacks = new ArrayList<>();
@@ -314,6 +339,13 @@ public class CameraView extends FrameLayout {
             }
         }
 
+        @Override
+        public void onPictureTaken(byte[] data) {
+            for (Callback callback : mCallbacks) {
+                callback.onPictureTaken(CameraView.this, data);
+            }
+        }
+
         public void reserveRequestLayoutOnOpen() {
             mRequestLayoutOnOpen = true;
         }
@@ -339,6 +371,15 @@ public class CameraView extends FrameLayout {
          * @param cameraView The associated {@link CameraView}.
          */
         public void onCameraClosed(CameraView cameraView) {
+        }
+
+        /**
+         * Called when a picture is taken.
+         *
+         * @param cameraView The associated {@link CameraView}.
+         * @param data       JPEG data.
+         */
+        public void onPictureTaken(CameraView cameraView, byte[] data) {
         }
     }
 
