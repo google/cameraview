@@ -30,27 +30,18 @@ import android.widget.FrameLayout;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
+import java.util.Set;
 
 public class CameraView extends FrameLayout {
 
-    public static final int FOCUS_MODE_OFF = Constants.FOCUS_MODE_OFF;
-    public static final int FOCUS_MODE_AUTO = Constants.FOCUS_MODE_AUTO;
-    public static final int FOCUS_MODE_MACRO = Constants.FOCUS_MODE_MACRO;
-    public static final int FOCUS_MODE_CONTINUOUS_PICTURE = Constants.FOCUS_MODE_CONTINUOUS_PICTURE;
-    public static final int FOCUS_MODE_CONTINUOUS_VIDEO = Constants.FOCUS_MODE_CONTINUOUS_VIDEO;
-    public static final int FOCUS_MODE_EDOF = Constants.FOCUS_MODE_EDOF;
-
-    @IntDef({FOCUS_MODE_OFF, FOCUS_MODE_AUTO, FOCUS_MODE_MACRO, FOCUS_MODE_CONTINUOUS_PICTURE,
-            FOCUS_MODE_CONTINUOUS_VIDEO, FOCUS_MODE_EDOF})
-    @Retention(RetentionPolicy.SOURCE)
-    public @interface FocusMode {
-    }
-
+    /** The camera device faces the opposite direction as the device's screen. */
     public static final int FACING_BACK = Constants.FACING_BACK;
-    public static final int FACING_FRONT = Constants.FACING_FRONT;
-    public static final int FACING_EXTERNAL = Constants.FACING_EXTERNAL;
 
-    @IntDef({FACING_BACK, FACING_FRONT, FACING_EXTERNAL})
+    /** The camera device faces the same direction as the device's screen. */
+    public static final int FACING_FRONT = Constants.FACING_FRONT;
+
+    /** Direction the camera faces relative to device screen. */
+    @IntDef({FACING_BACK, FACING_FRONT})
     @Retention(RetentionPolicy.SOURCE)
     public @interface Facing {
     }
@@ -73,7 +64,6 @@ public class CameraView extends FrameLayout {
         this(context, attrs, 0);
     }
 
-    @SuppressWarnings("WrongConstant")
     public CameraView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         // Internal setup
@@ -91,7 +81,8 @@ public class CameraView extends FrameLayout {
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
                 R.style.Widget_CameraView);
         mAdjustViewBounds = a.getBoolean(R.styleable.CameraView_android_adjustViewBounds, false);
-        setFocusMode(a.getInt(R.styleable.CameraView_focusMode, FOCUS_MODE_OFF));
+        setAutoFocus(a.getBoolean(R.styleable.CameraView_autoFocus, true));
+        //noinspection WrongConstant
         setFacing(a.getInt(R.styleable.CameraView_facing, FACING_BACK));
         a.recycle();
         // Display orientation detector
@@ -236,6 +227,13 @@ public class CameraView extends FrameLayout {
     }
 
     /**
+     * Gets all the aspect ratios supported by the current camera.
+     */
+    public Set<AspectRatio> getSupportedAspectRatios() {
+        return mImpl.getSupportedAspectRatios();
+    }
+
+    /**
      * Sets the aspect ratio of camera.
      *
      * @param ratio The {@link AspectRatio} to be set.
@@ -255,33 +253,31 @@ public class CameraView extends FrameLayout {
     }
 
     /**
-     * Sets the focus mode.
+     * Enables or disables the continuous auto-focus mode. When the current camera doesn't support
+     * auto-focus, calling this method will be ignored.
      *
-     * @param focusMode The focus mode. Must be one of {@link #FOCUS_MODE_OFF},
-     *                  {@link #FOCUS_MODE_AUTO}, {@link #FOCUS_MODE_MACRO},
-     *                  {@link #FOCUS_MODE_CONTINUOUS_PICTURE},
-     *                  {@link #FOCUS_MODE_CONTINUOUS_VIDEO}, and {@link #FOCUS_MODE_EDOF}.
+     * @param autoFocus {@code true} to enable continuous auto-focus mode. {@code false} to
+     *                  disable it.
      */
-    public void setFocusMode(@FocusMode int focusMode) {
-        mImpl.setFocusMode(focusMode);
+    public void setAutoFocus(boolean autoFocus) {
+        mImpl.setAutoFocus(autoFocus);
     }
 
     /**
-     * Gets the current focus mode.
+     * Returns whether the continuous auto-focus mode is enabled.
      *
-     * @return The current focus mode.
+     * @return {@code true} if the continuous auto-focus mode is enabled. {@code false} if it is
+     * disabled, or if it is not supported by the current camera.
      */
-    @FocusMode
-    public int getFocusMode() {
-        //noinspection WrongConstant
-        return mImpl.getFocusMode();
+    public boolean getAutoFocus() {
+        return mImpl.getAutoFocus();
     }
 
     /**
      * Chooses camera by the direction it faces.
      *
-     * @param facing The camera facing. Must be one of {@link #FACING_BACK},
-     *               {@link #FACING_FRONT}, and {@link #FACING_EXTERNAL}
+     * @param facing The camera facing. Must be either {@link #FACING_BACK} or
+     *               {@link #FACING_FRONT}.
      */
     public void setFacing(@Facing int facing) {
         mImpl.setFacing(facing);

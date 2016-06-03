@@ -109,6 +109,22 @@ public class CameraViewTest {
                         CameraView cameraView = (CameraView) view;
                         AspectRatio ratio = cameraView.getAspectRatio();
                         assertThat(ratio, is(notNullValue()));
+                        Set<AspectRatio> ratios = cameraView.getSupportedAspectRatios();
+                        assertThat(ratios.size(), is(greaterThanOrEqualTo(1)));
+                        assertThat(ratios, hasItem(ratio));
+                        if (ratios.size() == 1) {
+                            return;
+                        }
+                        // Pick one ratio to change to
+                        for (AspectRatio r : ratios) {
+                            if (!r.equals(ratio)) {
+                                ratio = r;
+                                break;
+                            }
+                        }
+                        assert ratio != null;
+                        cameraView.setAspectRatio(ratio);
+                        assertThat(cameraView.getAspectRatio(), is(equalTo(ratio)));
                     }
                 });
     }
@@ -163,16 +179,18 @@ public class CameraViewTest {
     }
 
     @Test
-    public void testFocusMode() {
+    public void testAutoFocus() {
         onView(withId(R.id.camera))
                 .check(new ViewAssertion() {
                     @Override
                     public void check(View view, NoMatchingViewException noViewFoundException) {
                         CameraView cameraView = (CameraView) view;
-                        assertThat(cameraView.getFocusMode(), is(CameraView.FOCUS_MODE_OFF));
-                        cameraView.setFocusMode(CameraView.FOCUS_MODE_CONTINUOUS_PICTURE);
-                        assertThat(cameraView.getFocusMode(),
-                                is(CameraView.FOCUS_MODE_CONTINUOUS_PICTURE));
+                        // This can fail on devices without auto-focus support
+                        assertThat(cameraView.getAutoFocus(), is(true));
+                        cameraView.setAutoFocus(false);
+                        assertThat(cameraView.getAutoFocus(), is(false));
+                        cameraView.setAutoFocus(true);
+                        assertThat(cameraView.getAutoFocus(), is(true));
                     }
                 });
     }

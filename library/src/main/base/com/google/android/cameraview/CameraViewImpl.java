@@ -18,6 +18,8 @@ package com.google.android.cameraview;
 
 import android.view.TextureView;
 
+import java.util.Set;
+
 abstract class CameraViewImpl {
 
     protected final Callback mCallback;
@@ -34,13 +36,15 @@ abstract class CameraViewImpl {
 
     abstract boolean isCameraOpened();
 
+    abstract Set<AspectRatio> getSupportedAspectRatios();
+
     abstract void setAspectRatio(AspectRatio ratio);
 
     abstract AspectRatio getAspectRatio();
 
-    abstract void setFocusMode(int focusMode);
+    abstract void setAutoFocus(boolean autoFocus);
 
-    abstract int getFocusMode();
+    abstract boolean getAutoFocus();
 
     abstract void setFacing(int facing);
 

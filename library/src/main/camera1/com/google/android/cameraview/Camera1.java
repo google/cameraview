@@ -21,6 +21,7 @@ import android.hardware.Camera;
 import android.view.TextureView;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
 
@@ -49,7 +50,7 @@ class Camera1 extends CameraViewImpl {
 
     private boolean mShowingPreview;
 
-    private int mFocusMode;
+    private boolean mAutoFocus;
 
     private int mFacing;
 
@@ -142,6 +143,11 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
+    Set<AspectRatio> getSupportedAspectRatios() {
+        return mPreviewSizes.ratios();
+    }
+
+    @Override
     void setAspectRatio(AspectRatio ratio) {
         if (mAspectRatio == null || !isCameraOpened()) {
             // Handle this later when camera is opened
@@ -163,29 +169,30 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
-    void setFocusMode(int focusMode) {
-        if (mFocusMode != focusMode) {
-            mFocusMode = focusMode;
-            if (mCamera != null) {
-                mCameraParameters.setFocusMode(Camera1Constants.convertFocusMode(focusMode));
-                mCamera.setParameters(mCameraParameters);
-            }
+    void setAutoFocus(boolean autoFocus) {
+        if (mAutoFocus == autoFocus) {
+            return;
+        }
+        if (setAutoFocusInternal(autoFocus)) {
+            mCamera.setParameters(mCameraParameters);
         }
     }
 
     @Override
-    int getFocusMode() {
-        return mFocusMode;
+    boolean getAutoFocus() {
+        String focusMode = mCameraParameters.getFocusMode();
+        return focusMode != null && focusMode.contains("continuous");
     }
 
     @Override
     void setFacing(int facing) {
-        if (mFacing != facing) {
-            mFacing = facing;
-            if (mCamera != null) {
-                stop();
-                start();
-            }
+        if (mFacing == facing) {
+            return;
+        }
+        mFacing = facing;
+        if (isCameraOpened()) {
+            stop();
+            start();
         }
     }
 
@@ -199,6 +206,20 @@ class Camera1 extends CameraViewImpl {
         if (!isCameraOpened()) {
             throw new IllegalStateException("Camera is not ready. Call start() before takePicture().");
         }
+        if (getAutoFocus()) {
+            mCamera.cancelAutoFocus();
+            mCamera.autoFocus(new Camera.AutoFocusCallback() {
+                @Override
+                public void onAutoFocus(boolean success, Camera camera) {
+                    takePictureInternal();
+                }
+            });
+        } else {
+            takePictureInternal();
+        }
+    }
+
+    private void takePictureInternal() {
         mCamera.takePicture(null, null, null, new Camera.PictureCallback() {
             @Override
             public void onPictureTaken(byte[] data, Camera camera) {
@@ -285,7 +306,7 @@ class Camera1 extends CameraViewImpl {
             mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
             mCameraParameters.setPictureSize(pictureSize.getWidth(), pictureSize.getHeight());
             mCameraParameters.setRotation(calcCameraRotation(mDisplayOrientation));
-            mCameraParameters.setFocusMode(Camera1Constants.convertFocusMode(mFocusMode));
+            setAutoFocusInternal(mAutoFocus);
             mCamera.setParameters(mCameraParameters);
             if (mShowingPreview) {
                 mCamera.startPreview();
@@ -331,6 +352,28 @@ class Camera1 extends CameraViewImpl {
             return (360 - (mCameraInfo.orientation + rotation) % 360) % 360;
         } else {  // back-facing
             return (mCameraInfo.orientation - rotation + 360) % 360;
+        }
+    }
+
+    /**
+     * @return {@code true} if {@link #mCameraParameters} was modified.
+     */
+    private boolean setAutoFocusInternal(boolean autoFocus) {
+        mAutoFocus = autoFocus;
+        if (isCameraOpened()) {
+            final List<String> modes = mCameraParameters.getSupportedFocusModes();
+            if (autoFocus && modes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
+                mCameraParameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
+            } else if (modes.contains(Camera.Parameters.FOCUS_MODE_FIXED)) {
+                mCameraParameters.setFocusMode(Camera.Parameters.FOCUS_MODE_FIXED);
+            } else if (modes.contains(Camera.Parameters.FOCUS_MODE_INFINITY)) {
+                mCameraParameters.setFocusMode(Camera.Parameters.FOCUS_MODE_INFINITY);
+            } else {
+                mCameraParameters.setFocusMode(modes.get(0));
+            }
+            return true;
+        } else {
+            return false;
         }
     }
 
