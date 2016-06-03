@@ -24,7 +24,6 @@ import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
-import android.view.OrientationEventListener;
 import android.view.TextureView;
 import android.widget.FrameLayout;
 
@@ -62,9 +61,9 @@ public class CameraView extends FrameLayout {
 
     private boolean mAdjustViewBounds;
 
-    private TextureView mTextureView;
+    private final TextureView mTextureView;
 
-    private OrientationEventListener mOrientationEventListener;
+    private final DisplayOrientationDetector mDisplayOrientationDetector;
 
     public CameraView(Context context) {
         this(context, null);
@@ -80,9 +79,9 @@ public class CameraView extends FrameLayout {
         // Internal setup
         mCallbacks = new CallbackBridge();
         if (Build.VERSION.SDK_INT < 21) {
-            mImpl = new Camera1(context, mCallbacks);
+            mImpl = new Camera1(mCallbacks);
         } else {
-            mImpl = new Camera1(context, mCallbacks); // TODO: Implement Camera2 and replace this
+            mImpl = new Camera1(mCallbacks); // TODO: Implement Camera2 and replace this
         }
         // View content
         inflate(context, R.layout.camera_view, this);
@@ -95,22 +94,25 @@ public class CameraView extends FrameLayout {
         setFocusMode(a.getInt(R.styleable.CameraView_focusMode, FOCUS_MODE_OFF));
         setFacing(a.getInt(R.styleable.CameraView_facing, FACING_BACK));
         a.recycle();
-        // Orientation listener
-        mOrientationEventListener = new OrientationEventListener(context) {
-            private int mLastOrientation;
+        // Display orientation detector
+        mDisplayOrientationDetector = new DisplayOrientationDetector(context) {
             @Override
-            public void onOrientationChanged(int orientation) {
-                if (orientation == OrientationEventListener.ORIENTATION_UNKNOWN) {
-                    return;
-                }
-                // Round the value to one of 0, 90, 180, and 270
-                orientation = ((orientation + 45) / 90 * 90) % 360;
-                if (mLastOrientation != orientation) {
-                    mLastOrientation = orientation;
-                    mImpl.setOrientation(orientation);
-                }
+            public void onDisplayOrientationChanged(int displayOrientation) {
+                mImpl.setDisplayOrientation(displayOrientation);
             }
         };
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        mDisplayOrientationDetector.enable(getDisplay());
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        mDisplayOrientationDetector.disable();
+        super.onDetachedFromWindow();
     }
 
     @Override
@@ -152,8 +154,7 @@ public class CameraView extends FrameLayout {
         int width = getMeasuredWidth();
         int height = getMeasuredHeight();
         AspectRatio ratio = getAspectRatio();
-        int orientation = mImpl.getDisplayOrientation();
-        if (orientation == 90 || orientation == 270) {
+        if (mDisplayOrientationDetector.getLastKnownDisplayOrientation() % 180 == 0) {
             ratio = ratio.inverse();
         }
         assert ratio != null;
@@ -175,7 +176,6 @@ public class CameraView extends FrameLayout {
      * {@link Activity#onResume()}.
      */
     public void start() {
-        mOrientationEventListener.enable();
         mImpl.start();
     }
 
@@ -185,7 +185,6 @@ public class CameraView extends FrameLayout {
      */
     public void stop() {
         mImpl.stop();
-        mOrientationEventListener.disable();
     }
 
     /**

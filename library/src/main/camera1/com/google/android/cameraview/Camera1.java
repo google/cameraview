@@ -16,12 +16,9 @@
 
 package com.google.android.cameraview;
 
-import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
-import android.view.Surface;
 import android.view.TextureView;
-import android.view.WindowManager;
 
 import java.io.IOException;
 import java.util.Set;
@@ -33,10 +30,6 @@ class Camera1 extends CameraViewImpl {
     private static final int INVALID_CAMERA_ID = -1;
 
     private static final AspectRatio DEFAULT_ASPECT_RATIO = AspectRatio.of(4, 3);
-
-    private static final String TAG = "Camera1";
-
-    private final Context mContext;
 
     private int mCameraId;
 
@@ -54,15 +47,13 @@ class Camera1 extends CameraViewImpl {
 
     private AspectRatio mAspectRatio;
 
-    private int mDisplayOrientation;
-
     private boolean mShowingPreview;
 
     private int mFocusMode;
 
     private int mFacing;
 
-    private int mOrientation;
+    private int mDisplayOrientation;
 
     private static class PreviewInfo {
         SurfaceTexture surface;
@@ -108,9 +99,8 @@ class Camera1 extends CameraViewImpl {
         }
     };
 
-    public Camera1(Context context, Callback callback) {
+    public Camera1(Callback callback) {
         super(callback);
-        mContext = context;
     }
 
     @Override
@@ -173,11 +163,6 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
-    int getDisplayOrientation() {
-        return mDisplayOrientation;
-    }
-
-    @Override
     void setFocusMode(int focusMode) {
         if (mFocusMode != focusMode) {
             mFocusMode = focusMode;
@@ -224,16 +209,13 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
-    void setOrientation(int orientation) {
-        if (mOrientation != orientation) {
-            mOrientation = orientation;
-            if (isCameraOpened()) {
-                calcRotation(mCameraParameters);
-                mCamera.setParameters(mCameraParameters);
-
-                mDisplayOrientation = calcDisplayOrientation();
-                mCamera.setDisplayOrientation(mDisplayOrientation);
-            }
+    void setDisplayOrientation(int displayOrientation) {
+        mDisplayOrientation = displayOrientation;
+        if (isCameraOpened()) {
+            int cameraRotation = calcCameraRotation(displayOrientation);
+            mCameraParameters.setRotation(cameraRotation);
+            mCamera.setParameters(mCameraParameters);
+            mCamera.setDisplayOrientation(cameraRotation);
         }
     }
 
@@ -272,9 +254,7 @@ class Camera1 extends CameraViewImpl {
             mAspectRatio = DEFAULT_ASPECT_RATIO;
         }
         adjustCameraParameters();
-        // Display orientation
-        mDisplayOrientation = calcDisplayOrientation();
-        mCamera.setDisplayOrientation(mDisplayOrientation);
+        mCamera.setDisplayOrientation(calcCameraRotation(mDisplayOrientation));
         mCallback.onCameraOpened();
     }
 
@@ -304,23 +284,13 @@ class Camera1 extends CameraViewImpl {
             }
             mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
             mCameraParameters.setPictureSize(pictureSize.getWidth(), pictureSize.getHeight());
-            calcRotation(mCameraParameters);
+            mCameraParameters.setRotation(calcCameraRotation(mDisplayOrientation));
             mCameraParameters.setFocusMode(Camera1Constants.convertFocusMode(mFocusMode));
             mCamera.setParameters(mCameraParameters);
             if (mShowingPreview) {
                 mCamera.startPreview();
             }
         }
-    }
-
-    private void calcRotation(Camera.Parameters parameters) {
-        int rotation;
-        if (mCameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
-            rotation = (mCameraInfo.orientation - mOrientation + 360) % 360;
-        } else {  // back-facing camera
-            rotation = (mCameraInfo.orientation + mOrientation) % 360;
-        }
-        parameters.setRotation(rotation);
     }
 
     @SuppressWarnings("SuspiciousNameCombination")
@@ -356,29 +326,11 @@ class Camera1 extends CameraViewImpl {
         }
     }
 
-    private int calcDisplayOrientation() {
-        WindowManager manager = (WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE);
-        int rotation = manager.getDefaultDisplay().getRotation();
-        int degrees = 0;
-        switch (rotation) {
-            case Surface.ROTATION_0:
-                degrees = 0;
-                break;
-            case Surface.ROTATION_90:
-                degrees = 90;
-                break;
-            case Surface.ROTATION_180:
-                degrees = 180;
-                break;
-            case Surface.ROTATION_270:
-                degrees = 270;
-                break;
-        }
+    private int calcCameraRotation(int rotation) {
         if (mCameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
-            int result = (mCameraInfo.orientation + degrees) % 360;
-            return (360 - result) % 360;  // compensate the mirror
+            return (360 - (mCameraInfo.orientation + rotation) % 360) % 360;
         } else {  // back-facing
-            return (mCameraInfo.orientation - degrees + 360) % 360;
+            return (mCameraInfo.orientation - rotation + 360) % 360;
         }
     }
 

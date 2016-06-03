@@ -38,8 +38,6 @@ abstract class CameraViewImpl {
 
     abstract AspectRatio getAspectRatio();
 
-    abstract int getDisplayOrientation();
-
     abstract void setFocusMode(int focusMode);
 
     abstract int getFocusMode();
@@ -50,7 +48,7 @@ abstract class CameraViewImpl {
 
     abstract void takePicture();
 
-    abstract void setOrientation(int orientation);
+    abstract void setDisplayOrientation(int displayOrientation);
 
     interface Callback {
 
