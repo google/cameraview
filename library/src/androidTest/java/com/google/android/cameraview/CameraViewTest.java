@@ -212,6 +212,20 @@ public class CameraViewTest {
     }
 
     @Test
+    public void testFlash() {
+        onView(withId(R.id.camera))
+                .check(new ViewAssertion() {
+                    @Override
+                    public void check(View view, NoMatchingViewException noViewFoundException) {
+                        CameraView cameraView = (CameraView) view;
+                        assertThat(cameraView.getFlash(), is(CameraView.FLASH_AUTO));
+                        cameraView.setFlash(CameraView.FLASH_TORCH);
+                        assertThat(cameraView.getFlash(), is(CameraView.FLASH_TORCH));
+                    }
+                });
+    }
+
+    @Test
     public void testTakePicture() throws Exception {
         TakePictureIdlingResource resource = new TakePictureIdlingResource(
                 (CameraView) rule.getActivity().findViewById(R.id.camera));

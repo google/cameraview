@@ -18,7 +18,13 @@
         <attr name="facing" format="enum">
             <enum name="back" value="0"/>
             <enum name="front" value="1"/>
-            <enum name="external" value="2"/>
+        </attr>
+        <attr name="flash" format="enum">
+            <enum name="off" value="0"/>
+            <enum name="on" value="1"/>
+            <enum name="torch" value="2"/>
+            <enum name="auto" value="3"/>
+            <enum name="redEye" value="4"/>
         </attr>
     </declare-styleable>
 </resources>

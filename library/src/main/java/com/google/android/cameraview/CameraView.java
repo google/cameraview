@@ -46,6 +46,26 @@ public class CameraView extends FrameLayout {
     public @interface Facing {
     }
 
+    /** Flash will not be fired. */
+    public static final int FLASH_OFF = Constants.FLASH_OFF;
+
+    /** Flash will always be fired during snapshot. */
+    public static final int FLASH_ON = Constants.FLASH_ON;
+
+    /** Constant emission of light during preview, auto-focus and snapshot. */
+    public static final int FLASH_TORCH = Constants.FLASH_TORCH;
+
+    /** Flash will be fired automatically when required. */
+    public static final int FLASH_AUTO = Constants.FLASH_AUTO;
+
+    /** Flash will be fired in red-eye reduction mode. */
+    public static final int FLASH_RED_EYE = Constants.FLASH_RED_EYE;
+
+    /** The mode for for the camera device's flash control */
+    @IntDef({FLASH_OFF, FLASH_ON, FLASH_TORCH, FLASH_AUTO, FLASH_RED_EYE})
+    public @interface Flash {
+    }
+
     private final CameraViewImpl mImpl;
 
     private final CallbackBridge mCallbacks;
@@ -64,6 +84,7 @@ public class CameraView extends FrameLayout {
         this(context, attrs, 0);
     }
 
+    @SuppressWarnings("WrongConstant")
     public CameraView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         // Internal setup
@@ -81,9 +102,9 @@ public class CameraView extends FrameLayout {
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
                 R.style.Widget_CameraView);
         mAdjustViewBounds = a.getBoolean(R.styleable.CameraView_android_adjustViewBounds, false);
-        setAutoFocus(a.getBoolean(R.styleable.CameraView_autoFocus, true));
-        //noinspection WrongConstant
         setFacing(a.getInt(R.styleable.CameraView_facing, FACING_BACK));
+        setAutoFocus(a.getBoolean(R.styleable.CameraView_autoFocus, true));
+        setFlash(a.getInt(R.styleable.CameraView_flash, Constants.FLASH_AUTO));
         a.recycle();
         // Display orientation detector
         mDisplayOrientationDetector = new DisplayOrientationDetector(context) {
@@ -292,6 +313,26 @@ public class CameraView extends FrameLayout {
     public int getFacing() {
         //noinspection WrongConstant
         return mImpl.getFacing();
+    }
+
+    /**
+     * Sets the flash mode.
+     *
+     * @param flash The desired flash mode.
+     */
+    public void setFlash(@Flash int flash) {
+        mImpl.setFlash(flash);
+    }
+
+    /**
+     * Gets the current flash mode.
+     *
+     * @return The current flash mode.
+     */
+    @Flash
+    public int getFlash() {
+        //noinspection WrongConstant
+        return mImpl.getFlash();
     }
 
     /**

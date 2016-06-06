@@ -50,6 +50,10 @@ abstract class CameraViewImpl {
 
     abstract int getFacing();
 
+    abstract void setFlash(int flash);
+
+    abstract int getFlash();
+
     abstract void takePicture();
 
     abstract void setDisplayOrientation(int displayOrientation);

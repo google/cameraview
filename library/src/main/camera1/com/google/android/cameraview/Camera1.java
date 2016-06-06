@@ -18,6 +18,7 @@ package com.google.android.cameraview;
 
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
+import android.support.v4.util.SparseArrayCompat;
 import android.view.TextureView;
 
 import java.io.IOException;
@@ -31,6 +32,15 @@ class Camera1 extends CameraViewImpl {
     private static final int INVALID_CAMERA_ID = -1;
 
     private static final AspectRatio DEFAULT_ASPECT_RATIO = AspectRatio.of(4, 3);
+    private static final SparseArrayCompat<String> FLASH_MODES = new SparseArrayCompat<>();
+
+    static {
+        FLASH_MODES.put(Constants.FLASH_OFF, Camera.Parameters.FLASH_MODE_OFF);
+        FLASH_MODES.put(Constants.FLASH_ON, Camera.Parameters.FLASH_MODE_ON);
+        FLASH_MODES.put(Constants.FLASH_TORCH, Camera.Parameters.FLASH_MODE_TORCH);
+        FLASH_MODES.put(Constants.FLASH_AUTO, Camera.Parameters.FLASH_MODE_AUTO);
+        FLASH_MODES.put(Constants.FLASH_RED_EYE, Camera.Parameters.FLASH_MODE_RED_EYE);
+    }
 
     private int mCameraId;
 
@@ -53,6 +63,8 @@ class Camera1 extends CameraViewImpl {
     private boolean mAutoFocus;
 
     private int mFacing;
+
+    private int mFlash;
 
     private int mDisplayOrientation;
 
@@ -180,6 +192,9 @@ class Camera1 extends CameraViewImpl {
 
     @Override
     boolean getAutoFocus() {
+        if (!isCameraOpened()) {
+            return mAutoFocus;
+        }
         String focusMode = mCameraParameters.getFocusMode();
         return focusMode != null && focusMode.contains("continuous");
     }
@@ -199,6 +214,21 @@ class Camera1 extends CameraViewImpl {
     @Override
     int getFacing() {
         return mFacing;
+    }
+
+    @Override
+    void setFlash(int flash) {
+        if (flash == mFlash) {
+            return;
+        }
+        if (setFlashInternal(flash)) {
+            mCamera.setParameters(mCameraParameters);
+        }
+    }
+
+    @Override
+    int getFlash() {
+        return mFlash;
     }
 
     @Override
@@ -307,6 +337,7 @@ class Camera1 extends CameraViewImpl {
             mCameraParameters.setPictureSize(pictureSize.getWidth(), pictureSize.getHeight());
             mCameraParameters.setRotation(calcCameraRotation(mDisplayOrientation));
             setAutoFocusInternal(mAutoFocus);
+            setFlashInternal(mFlash);
             mCamera.setParameters(mCameraParameters);
             if (mShowingPreview) {
                 mCamera.startPreview();
@@ -373,6 +404,31 @@ class Camera1 extends CameraViewImpl {
             }
             return true;
         } else {
+            return false;
+        }
+    }
+
+    /**
+     * @return {@code true} if {@link #mCameraParameters} was modified.
+     */
+    private boolean setFlashInternal(int flash) {
+        if (isCameraOpened()) {
+            List<String> modes = mCameraParameters.getSupportedFlashModes();
+            String mode = FLASH_MODES.get(flash);
+            if (modes.contains(mode)) {
+                mCameraParameters.setFlashMode(mode);
+                mFlash = flash;
+                return true;
+            }
+            String currentMode = FLASH_MODES.get(mFlash);
+            if (!modes.contains(currentMode)) {
+                mCameraParameters.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
+                mFlash = Constants.FLASH_OFF;
+                return true;
+            }
+            return false;
+        } else {
+            mFlash = flash;
             return false;
         }
     }

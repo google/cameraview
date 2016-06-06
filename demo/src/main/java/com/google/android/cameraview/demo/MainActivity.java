@@ -59,6 +59,26 @@ public class MainActivity extends AppCompatActivity implements
 
     private static final String FRAGMENT_DIALOG = "dialog";
 
+    private static final int[] FLASH_OPTIONS = {
+            CameraView.FLASH_AUTO,
+            CameraView.FLASH_OFF,
+            CameraView.FLASH_ON,
+    };
+
+    private static final int[] FLASH_ICONS = {
+            R.drawable.ic_flash_auto,
+            R.drawable.ic_flash_off,
+            R.drawable.ic_flash_on,
+    };
+
+    private static final int[] FLASH_TITLES = {
+            R.string.flash_auto,
+            R.string.flash_off,
+            R.string.flash_on,
+    };
+
+    private int mCurrentFlash;
+
     private CameraView mCameraView;
 
     private Handler mBackgroundHandler;
@@ -186,6 +206,14 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
+            case R.id.switch_flash:
+                if (mCameraView != null) {
+                    mCurrentFlash = (mCurrentFlash + 1) % FLASH_OPTIONS.length;
+                    item.setTitle(FLASH_TITLES[mCurrentFlash]);
+                    item.setIcon(FLASH_ICONS[mCurrentFlash]);
+                    mCameraView.setFlash(FLASH_OPTIONS[mCurrentFlash]);
+                }
+                break;
             case R.id.switch_camera:
                 if (mCameraView != null) {
                     int facing = mCameraView.getFacing();
