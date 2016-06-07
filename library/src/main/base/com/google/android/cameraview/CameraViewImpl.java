@@ -36,6 +36,10 @@ abstract class CameraViewImpl {
 
     abstract boolean isCameraOpened();
 
+    abstract void setFacing(int facing);
+
+    abstract int getFacing();
+
     abstract Set<AspectRatio> getSupportedAspectRatios();
 
     abstract void setAspectRatio(AspectRatio ratio);
@@ -45,10 +49,6 @@ abstract class CameraViewImpl {
     abstract void setAutoFocus(boolean autoFocus);
 
     abstract boolean getAutoFocus();
-
-    abstract void setFacing(int facing);
-
-    abstract int getFacing();
 
     abstract void setFlash(int flash);
 

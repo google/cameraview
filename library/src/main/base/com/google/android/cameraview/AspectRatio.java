@@ -16,13 +16,15 @@
 
 package com.google.android.cameraview;
 
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.v4.util.SparseArrayCompat;
 
 /**
  * Immutable class for describing proportional relationship between width and height.
  */
-public class AspectRatio implements Comparable<AspectRatio> {
+public class AspectRatio implements Comparable<AspectRatio>, Parcelable {
 
     private final static SparseArrayCompat<SparseArrayCompat<AspectRatio>> sCache
             = new SparseArrayCompat<>(16);
@@ -56,6 +58,27 @@ public class AspectRatio implements Comparable<AspectRatio> {
                 arrayX.put(y, ratio);
             }
             return ratio;
+        }
+    }
+
+    /**
+     * Parse an {@link AspectRatio} from a {@link String} formatted like "4:3".
+     *
+     * @param s The string representation of the aspect ratio
+     * @return The aspect ratio
+     * @throws IllegalArgumentException when the format is incorrect.
+     */
+    public static AspectRatio parse(String s) {
+        int position = s.indexOf(':');
+        if (position == -1) {
+            throw new IllegalArgumentException("Malformed aspect ratio: " + s);
+        }
+        try {
+            int x = Integer.parseInt(s.substring(0, position));
+            int y = Integer.parseInt(s.substring(position + 1));
+            return AspectRatio.of(x, y);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Malformed aspect ratio: " + s, e);
         }
     }
 
@@ -135,5 +158,32 @@ public class AspectRatio implements Comparable<AspectRatio> {
         }
         return a;
     }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeInt(mX);
+        dest.writeInt(mY);
+    }
+
+    public static final Parcelable.Creator<AspectRatio> CREATOR
+            = new Parcelable.Creator<AspectRatio>() {
+
+        @Override
+        public AspectRatio createFromParcel(Parcel source) {
+            int x = source.readInt();
+            int y = source.readInt();
+            return AspectRatio.of(x, y);
+        }
+
+        @Override
+        public AspectRatio[] newArray(int size) {
+            return new AspectRatio[size];
+        }
+    };
 
 }

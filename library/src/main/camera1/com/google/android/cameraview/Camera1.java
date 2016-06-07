@@ -31,7 +31,6 @@ class Camera1 extends CameraViewImpl {
 
     private static final int INVALID_CAMERA_ID = -1;
 
-    private static final AspectRatio DEFAULT_ASPECT_RATIO = AspectRatio.of(4, 3);
     private static final SparseArrayCompat<String> FLASH_MODES = new SparseArrayCompat<>();
 
     static {
@@ -155,6 +154,23 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
+    void setFacing(int facing) {
+        if (mFacing == facing) {
+            return;
+        }
+        mFacing = facing;
+        if (isCameraOpened()) {
+            stop();
+            start();
+        }
+    }
+
+    @Override
+    int getFacing() {
+        return mFacing;
+    }
+
+    @Override
     Set<AspectRatio> getSupportedAspectRatios() {
         return mPreviewSizes.ratios();
     }
@@ -197,23 +213,6 @@ class Camera1 extends CameraViewImpl {
         }
         String focusMode = mCameraParameters.getFocusMode();
         return focusMode != null && focusMode.contains("continuous");
-    }
-
-    @Override
-    void setFacing(int facing) {
-        if (mFacing == facing) {
-            return;
-        }
-        mFacing = facing;
-        if (isCameraOpened()) {
-            stop();
-            start();
-        }
-    }
-
-    @Override
-    int getFacing() {
-        return mFacing;
     }
 
     @Override
@@ -302,7 +301,7 @@ class Camera1 extends CameraViewImpl {
         }
         // AspectRatio
         if (mAspectRatio == null) {
-            mAspectRatio = DEFAULT_ASPECT_RATIO;
+            mAspectRatio = Constants.DEFAULT_ASPECT_RATIO;
         }
         adjustCameraParameters();
         mCamera.setDisplayOrientation(calcCameraRotation(mDisplayOrientation));
@@ -313,7 +312,7 @@ class Camera1 extends CameraViewImpl {
         AspectRatio r = null;
         for (AspectRatio ratio : mPreviewSizes.ratios()) {
             r = ratio;
-            if (ratio.equals(DEFAULT_ASPECT_RATIO)) {
+            if (ratio.equals(Constants.DEFAULT_ASPECT_RATIO)) {
                 return ratio;
             }
         }

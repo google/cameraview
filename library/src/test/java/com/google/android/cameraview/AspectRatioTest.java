@@ -92,4 +92,16 @@ public class AspectRatioTest {
         assertThat(s.getY(), is(4));
     }
 
+    @Test
+    public void testParse() {
+        AspectRatio r = AspectRatio.parse("23:31");
+        assertThat(r.getX(), is(23));
+        assertThat(r.getY(), is(31));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testParseFailure() {
+        AspectRatio.parse("MALFORMED");
+    }
+
 }

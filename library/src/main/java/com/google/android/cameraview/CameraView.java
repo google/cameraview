@@ -20,9 +20,13 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.os.Build;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.os.ParcelableCompat;
+import android.support.v4.os.ParcelableCompatCreatorCallbacks;
 import android.util.AttributeSet;
 import android.view.TextureView;
 import android.widget.FrameLayout;
@@ -103,6 +107,12 @@ public class CameraView extends FrameLayout {
                 R.style.Widget_CameraView);
         mAdjustViewBounds = a.getBoolean(R.styleable.CameraView_android_adjustViewBounds, false);
         setFacing(a.getInt(R.styleable.CameraView_facing, FACING_BACK));
+        String aspectRatio = a.getString(R.styleable.CameraView_aspectRatio);
+        if (aspectRatio != null) {
+            setAspectRatio(AspectRatio.parse(aspectRatio));
+        } else {
+            setAspectRatio(Constants.DEFAULT_ASPECT_RATIO);
+        }
         setAutoFocus(a.getBoolean(R.styleable.CameraView_autoFocus, true));
         setFlash(a.getInt(R.styleable.CameraView_flash, Constants.FLASH_AUTO));
         a.recycle();
@@ -183,6 +193,30 @@ public class CameraView extends FrameLayout {
         }
     }
 
+    @Override
+    protected Parcelable onSaveInstanceState() {
+        SavedState state = new SavedState(super.onSaveInstanceState());
+        state.facing = getFacing();
+        state.ratio = getAspectRatio();
+        state.autoFocus = getAutoFocus();
+        state.flash = getFlash();
+        return state;
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Parcelable state) {
+        if (!(state instanceof SavedState)) {
+            super.onRestoreInstanceState(state);
+            return;
+        }
+        SavedState ss = (SavedState) state;
+        super.onRestoreInstanceState(ss.getSuperState());
+        setFacing(ss.facing);
+        setAspectRatio(ss.ratio);
+        setAutoFocus(ss.autoFocus);
+        setFlash(ss.flash);
+    }
+
     /**
      * Open a camera device and start showing camera preview. This is typically called from
      * {@link Activity#onResume()}.
@@ -248,6 +282,27 @@ public class CameraView extends FrameLayout {
     }
 
     /**
+     * Chooses camera by the direction it faces.
+     *
+     * @param facing The camera facing. Must be either {@link #FACING_BACK} or
+     *               {@link #FACING_FRONT}.
+     */
+    public void setFacing(@Facing int facing) {
+        mImpl.setFacing(facing);
+    }
+
+    /**
+     * Gets the direction that the current camera faces.
+     *
+     * @return The camera facing.
+     */
+    @Facing
+    public int getFacing() {
+        //noinspection WrongConstant
+        return mImpl.getFacing();
+    }
+
+    /**
      * Gets all the aspect ratios supported by the current camera.
      */
     public Set<AspectRatio> getSupportedAspectRatios() {
@@ -292,27 +347,6 @@ public class CameraView extends FrameLayout {
      */
     public boolean getAutoFocus() {
         return mImpl.getAutoFocus();
-    }
-
-    /**
-     * Chooses camera by the direction it faces.
-     *
-     * @param facing The camera facing. Must be either {@link #FACING_BACK} or
-     *               {@link #FACING_FRONT}.
-     */
-    public void setFacing(@Facing int facing) {
-        mImpl.setFacing(facing);
-    }
-
-    /**
-     * Gets the direction that the current camera faces.
-     *
-     * @return The camera facing.
-     */
-    @Facing
-    public int getFacing() {
-        //noinspection WrongConstant
-        return mImpl.getFacing();
     }
 
     /**
@@ -385,6 +419,57 @@ public class CameraView extends FrameLayout {
         public void reserveRequestLayoutOnOpen() {
             mRequestLayoutOnOpen = true;
         }
+    }
+
+    protected static class SavedState extends BaseSavedState {
+
+        @Facing
+        int facing;
+
+        AspectRatio ratio;
+
+        boolean autoFocus;
+
+        @Flash
+        int flash;
+
+        @SuppressWarnings("WrongConstant")
+        public SavedState(Parcel source, ClassLoader loader) {
+            super(source);
+            facing = source.readInt();
+            ratio = source.readParcelable(loader);
+            autoFocus = source.readByte() != 0;
+            flash = source.readInt();
+        }
+
+        public SavedState(Parcelable superState) {
+            super(superState);
+        }
+
+        @Override
+        public void writeToParcel(Parcel out, int flags) {
+            super.writeToParcel(out, flags);
+            out.writeInt(facing);
+            out.writeParcelable(ratio, 0);
+            out.writeByte((byte) (autoFocus ? 1 : 0));
+            out.writeInt(flash);
+        }
+
+        public static final Parcelable.Creator<SavedState> CREATOR
+                = ParcelableCompat.newCreator(new ParcelableCompatCreatorCallbacks<SavedState>() {
+
+            @Override
+            public SavedState createFromParcel(Parcel in, ClassLoader loader) {
+                return new SavedState(in, loader);
+            }
+
+            @Override
+            public SavedState[] newArray(int size) {
+                return new SavedState[size];
+            }
+
+        });
+
     }
 
     /**
