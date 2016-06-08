@@ -16,6 +16,7 @@
 
 package com.google.android.cameraview;
 
+import android.graphics.Matrix;
 import android.view.TextureView;
 
 import java.util.Set;
@@ -65,6 +66,8 @@ abstract class CameraViewImpl {
         void onCameraClosed();
 
         void onPictureTaken(byte[] data);
+
+        void onTransformUpdated(Matrix matrix);
 
     }
 

@@ -19,6 +19,7 @@ package com.google.android.cameraview;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.Matrix;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -96,7 +97,7 @@ public class CameraView extends FrameLayout {
         if (Build.VERSION.SDK_INT < 21) {
             mImpl = new Camera1(mCallbacks);
         } else {
-            mImpl = new Camera1(mCallbacks); // TODO: Implement Camera2 and replace this
+            mImpl = new Camera2(mCallbacks, context);
         }
         // View content
         inflate(context, R.layout.camera_view, this);
@@ -414,6 +415,11 @@ public class CameraView extends FrameLayout {
             for (Callback callback : mCallbacks) {
                 callback.onPictureTaken(CameraView.this, data);
             }
+        }
+
+        @Override
+        public void onTransformUpdated(Matrix matrix) {
+            mTextureView.setTransform(matrix);
         }
 
         public void reserveRequestLayoutOnOpen() {

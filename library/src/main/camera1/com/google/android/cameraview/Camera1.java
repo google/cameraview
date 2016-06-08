@@ -49,7 +49,7 @@ class Camera1 extends CameraViewImpl {
 
     private final Camera.CameraInfo mCameraInfo = new Camera.CameraInfo();
 
-    private final PreviewInfo mPreviewInfo = new PreviewInfo();
+    private final SurfaceInfo mSurfaceInfo = new SurfaceInfo();
 
     private final SizeMap mPreviewSizes = new SizeMap();
 
@@ -67,23 +67,11 @@ class Camera1 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
-    private static class PreviewInfo {
-        SurfaceTexture surface;
-        int width;
-        int height;
-
-        void configure(SurfaceTexture s, int w, int h) {
-            surface = s;
-            width = w;
-            height = h;
-        }
-    }
-
     private final TextureView.SurfaceTextureListener mSurfaceTextureListener
             = new TextureView.SurfaceTextureListener() {
 
         private void reconfigurePreview(SurfaceTexture surface, int width, int height) {
-            mPreviewInfo.configure(surface, width, height);
+            mSurfaceInfo.configure(surface, width, height);
             if (mCamera != null) {
                 setUpPreview();
                 adjustCameraParameters();
@@ -124,7 +112,7 @@ class Camera1 extends CameraViewImpl {
     void start() {
         chooseCamera();
         openCamera();
-        if (mPreviewInfo.surface != null) {
+        if (mSurfaceInfo.surface != null) {
             setUpPreview();
         }
         mShowingPreview = true;
@@ -142,7 +130,7 @@ class Camera1 extends CameraViewImpl {
 
     private void setUpPreview() {
         try {
-            mCamera.setPreviewTexture(mPreviewInfo.surface);
+            mCamera.setPreviewTexture(mSurfaceInfo.surface);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -346,17 +334,17 @@ class Camera1 extends CameraViewImpl {
 
     @SuppressWarnings("SuspiciousNameCombination")
     private Size chooseOptimalSize(SortedSet<Size> sizes) {
-        if (mPreviewInfo.width == 0 || mPreviewInfo.height == 0) { // Not yet laid out
+        if (mSurfaceInfo.width == 0 || mSurfaceInfo.height == 0) { // Not yet laid out
             return sizes.first(); // Return the smallest size
         }
         int desiredWidth;
         int desiredHeight;
         if (mDisplayOrientation == 90 || mDisplayOrientation == 270) {
-            desiredWidth = mPreviewInfo.height;
-            desiredHeight = mPreviewInfo.width;
+            desiredWidth = mSurfaceInfo.height;
+            desiredHeight = mSurfaceInfo.width;
         } else {
-            desiredWidth = mPreviewInfo.width;
-            desiredHeight = mPreviewInfo.height;
+            desiredWidth = mSurfaceInfo.width;
+            desiredHeight = mSurfaceInfo.height;
         }
         Size result = null;
         for (Size size : sizes) { // Iterate from small to large
