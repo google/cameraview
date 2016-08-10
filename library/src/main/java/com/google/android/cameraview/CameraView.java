@@ -129,7 +129,7 @@ public class CameraView extends FrameLayout {
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        mDisplayOrientationDetector.enable(getDisplay());
+        mDisplayOrientationDetector.enable(ViewCompat2.getDisplay(this));
     }
 
     @Override

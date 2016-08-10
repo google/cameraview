@@ -20,6 +20,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import android.os.Bundle;
+import android.os.Parcel;
 import android.support.test.rule.UiThreadTestRule;
 import android.support.test.runner.AndroidJUnit4;
 
@@ -32,24 +33,22 @@ import static org.hamcrest.core.Is.is;
 @RunWith(AndroidJUnit4.class)
 public class AspectRatioInstrumentationTest {
 
-    public UiThreadTestRule rule;
-
-    public AspectRatioInstrumentationTest() {
-        rule = new UiThreadTestRule();
-    }
-
     @Test
     public void testParcel() {
-        final String key = "key";
-        AspectRatio ratio = AspectRatio.of(4, 3);
-        Bundle b = new Bundle();
-        b.putParcelable(key, ratio);
-        AspectRatio result = b.getParcelable(key);
-        assertNotNull(result);
-        assertThat(result.getX(), is(4));
-        assertThat(result.getY(), is(3));
-        // As the first instance is alive, the parceled result should still be the same instance
-        assertThat(result, is(sameInstance(ratio)));
+        final AspectRatio original = AspectRatio.of(4, 3);
+        final Parcel parcel = Parcel.obtain();
+        try {
+            parcel.writeParcelable(original, 0);
+            parcel.setDataPosition(0);
+            final AspectRatio restored = parcel.readParcelable(getClass().getClassLoader());
+            assertNotNull(restored);
+            assertThat(restored.getX(), is(4));
+            assertThat(restored.getY(), is(3));
+            // As the first instance is alive, the parceled result should still be the same instance
+            assertThat(restored, is(sameInstance(original)));
+        } finally {
+            parcel.recycle();
+        }
     }
 
 }
