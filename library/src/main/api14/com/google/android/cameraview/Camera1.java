@@ -16,10 +16,12 @@
 
 package com.google.android.cameraview;
 
+import android.annotation.SuppressLint;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
+import android.os.Build;
 import android.support.v4.util.SparseArrayCompat;
-import android.view.TextureView;
+import android.view.SurfaceHolder;
 
 import java.io.IOException;
 import java.util.List;
@@ -49,8 +51,6 @@ class Camera1 extends CameraViewImpl {
 
     private final Camera.CameraInfo mCameraInfo = new Camera.CameraInfo();
 
-    private final SurfaceInfo mSurfaceInfo = new SurfaceInfo();
-
     private final SizeMap mPreviewSizes = new SizeMap();
 
     private final SizeMap mPictureSizes = new SizeMap();
@@ -67,52 +67,24 @@ class Camera1 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
-    private final TextureView.SurfaceTextureListener mSurfaceTextureListener
-            = new TextureView.SurfaceTextureListener() {
-
-        private void reconfigurePreview(SurfaceTexture surface, int width, int height) {
-            mSurfaceInfo.configure(surface, width, height);
-            if (mCamera != null) {
-                setUpPreview();
-                adjustCameraParameters();
-            }
-        }
-
-        @Override
-        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            reconfigurePreview(surface, width, height);
-        }
-
-        @Override
-        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-            reconfigurePreview(surface, width, height);
-        }
-
-        @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-            releaseCamera(); // Safe guard
-            return true;
-        }
-
-        @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-        }
-    };
-
-    public Camera1(Callback callback) {
-        super(callback);
-    }
-
-    @Override
-    TextureView.SurfaceTextureListener getSurfaceTextureListener() {
-        return mSurfaceTextureListener;
+    Camera1(Callback callback, PreviewImpl preview) {
+        super(callback, preview);
+        preview.setCallback(new PreviewImpl.Callback() {
+                @Override
+                public void onSurfaceChanged() {
+                    if (mCamera != null) {
+                        setUpPreview();
+                        adjustCameraParameters();
+                    }
+                }
+            });
     }
 
     @Override
     void start() {
         chooseCamera();
         openCamera();
-        if (mSurfaceInfo.surface != null) {
+        if (mPreview.isReady()) {
             setUpPreview();
         }
         mShowingPreview = true;
@@ -128,9 +100,22 @@ class Camera1 extends CameraViewImpl {
         releaseCamera();
     }
 
+    @SuppressLint("NewApi") // Suppresses Camera#setPreviewTexture
     private void setUpPreview() {
         try {
-            mCamera.setPreviewTexture(mSurfaceInfo.surface);
+            if (mPreview.getOutputClass() == SurfaceHolder.class) {
+                final boolean needsToStopPreview = mShowingPreview &&
+                        Build.VERSION.SDK_INT < Build.VERSION_CODES.ICE_CREAM_SANDWICH;
+                if (needsToStopPreview) {
+                    mCamera.stopPreview();
+                }
+                mCamera.setPreviewDisplay(mPreview.getSurfaceHolder());
+                if (needsToStopPreview) {
+                    mCamera.startPreview();
+                }
+            } else {
+                mCamera.setPreviewTexture((SurfaceTexture) mPreview.getSurfaceTexture());
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -253,7 +238,13 @@ class Camera1 extends CameraViewImpl {
             int cameraRotation = calcCameraRotation(displayOrientation);
             mCameraParameters.setRotation(cameraRotation);
             mCamera.setParameters(mCameraParameters);
+            if (mShowingPreview) {
+                mCamera.stopPreview();
+            }
             mCamera.setDisplayOrientation(cameraRotation);
+            if (mShowingPreview) {
+                mCamera.startPreview();
+            }
         }
     }
 
@@ -334,17 +325,19 @@ class Camera1 extends CameraViewImpl {
 
     @SuppressWarnings("SuspiciousNameCombination")
     private Size chooseOptimalSize(SortedSet<Size> sizes) {
-        if (mSurfaceInfo.width == 0 || mSurfaceInfo.height == 0) { // Not yet laid out
+        if (!mPreview.isReady()) { // Not yet laid out
             return sizes.first(); // Return the smallest size
         }
         int desiredWidth;
         int desiredHeight;
+        final int surfaceWidth = mPreview.getWidth();
+        final int surfaceHeight = mPreview.getHeight();
         if (mDisplayOrientation == 90 || mDisplayOrientation == 270) {
-            desiredWidth = mSurfaceInfo.height;
-            desiredHeight = mSurfaceInfo.width;
+            desiredWidth = surfaceHeight;
+            desiredHeight = surfaceWidth;
         } else {
-            desiredWidth = mSurfaceInfo.width;
-            desiredHeight = mSurfaceInfo.height;
+            desiredWidth = surfaceWidth;
+            desiredHeight = surfaceHeight;
         }
         Size result = null;
         for (Size size : sizes) { // Iterate from small to large

@@ -19,8 +19,6 @@ package com.google.android.cameraview;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.ImageFormat;
-import android.graphics.Matrix;
-import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -37,15 +35,12 @@ import android.support.annotation.NonNull;
 import android.util.Log;
 import android.util.SparseIntArray;
 import android.view.Surface;
-import android.view.TextureView;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.SortedSet;
 
-
-@SuppressWarnings("MissingPermission")
 @TargetApi(Build.VERSION_CODES.LOLLIPOP)
 class Camera2 extends CameraViewImpl {
 
@@ -59,35 +54,6 @@ class Camera2 extends CameraViewImpl {
     }
 
     private final CameraManager mCameraManager;
-
-    private final TextureView.SurfaceTextureListener mSurfaceTextureListener
-            = new TextureView.SurfaceTextureListener() {
-
-        @Override
-        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            mSurfaceInfo.configure(surface, width, height);
-            configureTransform();
-            startCaptureSession();
-        }
-
-        @Override
-        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-            mSurfaceInfo.configure(surface, width, height);
-            configureTransform();
-            startCaptureSession();
-        }
-
-        @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-            mSurfaceInfo.configure(null, 0, 0);
-            return true;
-        }
-
-        @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-        }
-
-    };
 
     private final CameraDevice.StateCallback mCameraDeviceCallback
             = new CameraDevice.StateCallback() {
@@ -202,8 +168,6 @@ class Camera2 extends CameraViewImpl {
 
     private ImageReader mImageReader;
 
-    private final SurfaceInfo mSurfaceInfo = new SurfaceInfo();
-
     private final SizeMap mPreviewSizes = new SizeMap();
 
     private final SizeMap mPictureSizes = new SizeMap();
@@ -218,14 +182,15 @@ class Camera2 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
-    public Camera2(Callback callback, Context context) {
-        super(callback);
+    Camera2(Callback callback, PreviewImpl preview, Context context) {
+        super(callback, preview);
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
-    }
-
-    @Override
-    TextureView.SurfaceTextureListener getSurfaceTextureListener() {
-        return mSurfaceTextureListener;
+        mPreview.setCallback(new PreviewImpl.Callback() {
+                @Override
+                public void onSurfaceChanged() {
+                    startCaptureSession();
+                }
+            });
     }
 
     @Override
@@ -289,6 +254,7 @@ class Camera2 extends CameraViewImpl {
         mAspectRatio = ratio;
         if (mCaptureSession != null) {
             mCaptureSession.close();
+            mCaptureSession = null;
             startCaptureSession();
         }
     }
@@ -359,12 +325,11 @@ class Camera2 extends CameraViewImpl {
     @Override
     void setDisplayOrientation(int displayOrientation) {
         mDisplayOrientation = displayOrientation;
-        configureTransform();
+        mPreview.setDisplayOrientation(mDisplayOrientation);
     }
 
     /**
-     * Chooses a camera ID by the specified camera facing ({@link #mFacing}).
-     *
+     * <p>Chooses a camera ID by the specified camera facing ({@link #mFacing}).</p>
      * <p>This rewrites {@link #mCameraId}, {@link #mCameraCharacteristics}, and optionally
      * {@link #mFacing}.</p>
      */
@@ -406,8 +371,7 @@ class Camera2 extends CameraViewImpl {
     }
 
     /**
-     * Collects some information from {@link #mCameraCharacteristics}.
-     *
+     * <p>Collects some information from {@link #mCameraCharacteristics}.</p>
      * <p>This rewrites {@link #mPreviewSizes}, {@link #mPictureSizes}, and optionally,
      * {@link #mAspectRatio}.</p>
      */
@@ -418,20 +382,20 @@ class Camera2 extends CameraViewImpl {
             throw new IllegalStateException("Failed to get configuration map: " + mCameraId);
         }
         mPreviewSizes.clear();
-        for (android.util.Size size : map.getOutputSizes(SurfaceTexture.class)) {
+        for (android.util.Size size : map.getOutputSizes(mPreview.getOutputClass())) {
             mPreviewSizes.add(new Size(size.getWidth(), size.getHeight()));
         }
         mPictureSizes.clear();
-        // try to get hi-res output sizes for Marshmellow and higher
+        // try to get hi-res output sizes for Marshmallow and higher
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-             android.util.Size[] outputSizes = map.getHighResolutionOutputSizes(ImageFormat.JPEG);
+            android.util.Size[] outputSizes = map.getHighResolutionOutputSizes(ImageFormat.JPEG);
             if (outputSizes != null) {
                 for (android.util.Size size : map.getHighResolutionOutputSizes(ImageFormat.JPEG)) {
                     mPictureSizes.add(new Size(size.getWidth(), size.getHeight()));
                 }
             }
         }
-        // fallback camera sizes and lower than Marshmellow
+        // fallback camera sizes and lower than Marshmallow
         if (mPictureSizes.ratios().size() == 0) {
             for (android.util.Size size : map.getOutputSizes(ImageFormat.JPEG)) {
                 mPictureSizes.add(new Size(size.getWidth(), size.getHeight()));
@@ -451,8 +415,7 @@ class Camera2 extends CameraViewImpl {
     }
 
     /**
-     * Starts opening a camera device.
-     *
+     * <p>Starts opening a camera device.</p>
      * <p>The result will be processed in {@link #mCameraDeviceCallback}.</p>
      */
     private void startOpeningCamera() {
@@ -464,19 +427,17 @@ class Camera2 extends CameraViewImpl {
     }
 
     /**
-     * Starts a capture session for camera preview.
-     *
+     * <p>Starts a capture session for camera preview.</p>
      * <p>This rewrites {@link #mPreviewRequestBuilder}.</p>
-     *
      * <p>The result will be continuously processed in {@link #mSessionCallback}.</p>
      */
     private void startCaptureSession() {
-        if (!isCameraOpened() || mSurfaceInfo.surface == null) {
+        if (!isCameraOpened() || !mPreview.isReady()) {
             return;
         }
         Size previewSize = chooseOptimalSize();
-        mSurfaceInfo.surface.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
-        Surface surface = new Surface(mSurfaceInfo.surface);
+        mPreview.setBufferSize(previewSize.getWidth(), previewSize.getHeight());
+        Surface surface = mPreview.getSurface();
         try {
             mPreviewRequestBuilder = mCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             mPreviewRequestBuilder.addTarget(surface);
@@ -488,18 +449,20 @@ class Camera2 extends CameraViewImpl {
     }
 
     /**
-     * Chooses the optimal preview size based on {@link #mPreviewSizes} and {@link #mSurfaceInfo}.
+     * Chooses the optimal preview size based on {@link #mPreviewSizes} and the surface size.
      *
      * @return The picked size for camera preview.
      */
     private Size chooseOptimalSize() {
         int surfaceLonger, surfaceShorter;
-        if (mSurfaceInfo.width < mSurfaceInfo.height) {
-            surfaceLonger = mSurfaceInfo.height;
-            surfaceShorter = mSurfaceInfo.width;
+        final int surfaceWidth = mPreview.getWidth();
+        final int surfaceHeight = mPreview.getHeight();
+        if (surfaceWidth < surfaceHeight) {
+            surfaceLonger = surfaceHeight;
+            surfaceShorter = surfaceWidth;
         } else {
-            surfaceLonger = mSurfaceInfo.width;
-            surfaceShorter = mSurfaceInfo.height;
+            surfaceLonger = surfaceWidth;
+            surfaceShorter = surfaceHeight;
         }
         SortedSet<Size> candidates = mPreviewSizes.sizes(mAspectRatio);
         // Pick the smallest of those big enough.
@@ -510,42 +473,6 @@ class Camera2 extends CameraViewImpl {
         }
         // If no size is big enough, pick the largest one.
         return candidates.last();
-    }
-
-    /**
-     * Configures the transform matrix for TextureView based on {@link #mDisplayOrientation} and
-     * {@link #mSurfaceInfo}.
-     */
-    private void configureTransform() {
-        Matrix matrix = new Matrix();
-        if (mDisplayOrientation % 180 == 90) {
-            // Rotate the camera preview when the screen is landscape.
-            matrix.setPolyToPoly(
-                    new float[]{
-                            0.f, 0.f, // top left
-                            mSurfaceInfo.width, 0.f, // top right
-                            0.f, mSurfaceInfo.height, // bottom left
-                            mSurfaceInfo.width, mSurfaceInfo.height, // bottom right
-                    }, 0,
-                    mDisplayOrientation == 90 ?
-                            // Clockwise
-                            new float[]{
-                                    0.f, mSurfaceInfo.height, // top left
-                                    0.f, 0.f, // top right
-                                    mSurfaceInfo.width, mSurfaceInfo.height, // bottom left
-                                    mSurfaceInfo.width, 0.f, // bottom right
-                            }
-                            : // mDisplayOrientation == 270
-                            // Counter-clockwise
-                            new float[]{
-                                    mSurfaceInfo.width, 0.f, // top left
-                                    mSurfaceInfo.width, mSurfaceInfo.height, // top right
-                                    0.f, 0.f, // bottom left
-                                    0.f, mSurfaceInfo.height, // bottom right
-                            }, 0,
-                    4);
-        }
-        mCallback.onTransformUpdated(matrix);
     }
 
     /**
@@ -710,16 +637,16 @@ class Camera2 extends CameraViewImpl {
     private static abstract class PictureCaptureCallback
             extends CameraCaptureSession.CaptureCallback {
 
-        public static final int STATE_PREVIEW = 0;
-        public static final int STATE_LOCKING = 1;
-        public static final int STATE_LOCKED = 2;
-        public static final int STATE_PRECAPTURE = 3;
-        public static final int STATE_WAITING = 4;
-        public static final int STATE_CAPTURING = 5;
+        static final int STATE_PREVIEW = 0;
+        static final int STATE_LOCKING = 1;
+        static final int STATE_LOCKED = 2;
+        static final int STATE_PRECAPTURE = 3;
+        static final int STATE_WAITING = 4;
+        static final int STATE_CAPTURING = 5;
 
         private int mState;
 
-        public void setState(int state) {
+        void setState(int state) {
             mState = state;
         }
 

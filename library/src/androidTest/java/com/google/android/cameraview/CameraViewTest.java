@@ -16,17 +16,9 @@
 
 package com.google.android.cameraview;
 
-import com.google.android.cameraview.test.R;
-
-import org.hamcrest.Matcher;
-import org.hamcrest.core.IsAnything;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
+import android.annotation.TargetApi;
 import android.graphics.Bitmap;
+import android.os.Build;
 import android.os.SystemClock;
 import android.support.test.espresso.IdlingResource;
 import android.support.test.espresso.NoMatchingViewException;
@@ -39,6 +31,16 @@ import android.support.test.runner.AndroidJUnit4;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
+
+import com.google.android.cameraview.test.R;
+
+import org.hamcrest.Matcher;
+import org.hamcrest.core.IsAnything;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -88,8 +90,13 @@ public class CameraViewTest {
     public void testSetup() {
         onView(withId(R.id.camera))
                 .check(matches(isDisplayed()));
-        onView(withId(R.id.texture_view))
-                .check(matches(isDisplayed()));
+        try {
+            onView(withId(R.id.texture_view))
+                    .check(matches(isDisplayed()));
+        } catch (NoMatchingViewException e) {
+            onView(withId(R.id.surface_view))
+                    .check(matches(isDisplayed()));
+        }
     }
 
     @Test
@@ -161,18 +168,20 @@ public class CameraViewTest {
     }
 
     @Test
-    public void testTextureViewSize() {
+    public void testPreviewViewSize() {
         onView(withId(R.id.camera))
                 .check(new ViewAssertion() {
                     @Override
                     public void check(View view, NoMatchingViewException noViewFoundException) {
                         CameraView cameraView = (CameraView) view;
-                        TextureView textureView = (TextureView)
-                                view.findViewById(R.id.texture_view);
+                        View preview = view.findViewById(R.id.texture_view);
+                        if (preview == null) {
+                            preview = view.findViewById(R.id.surface_view);
+                        }
                         AspectRatio cameraRatio = cameraView.getAspectRatio();
                         assert cameraRatio != null;
                         AspectRatio textureRatio = AspectRatio.of(
-                                textureView.getWidth(), textureView.getHeight());
+                                preview.getWidth(), preview.getHeight());
                         assertThat(textureRatio, is(closeToOrInverse(cameraRatio)));
                     }
                 });
@@ -262,6 +271,9 @@ public class CameraViewTest {
         return new ViewAssertion() {
             @Override
             public void check(View view, NoMatchingViewException noViewFoundException) {
+                if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+                    return;
+                }
                 CameraView cameraView = (CameraView) view;
                 TextureView textureView = (TextureView) cameraView.findViewById(R.id.texture_view);
                 Bitmap bitmap = textureView.getBitmap();

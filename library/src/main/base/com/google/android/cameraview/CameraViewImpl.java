@@ -16,8 +16,7 @@
 
 package com.google.android.cameraview;
 
-import android.graphics.Matrix;
-import android.view.TextureView;
+import android.view.View;
 
 import java.util.Set;
 
@@ -25,11 +24,16 @@ abstract class CameraViewImpl {
 
     protected final Callback mCallback;
 
-    public CameraViewImpl(Callback callback) {
+    protected final PreviewImpl mPreview;
+
+    CameraViewImpl(Callback callback, PreviewImpl preview) {
         mCallback = callback;
+        mPreview = preview;
     }
 
-    abstract TextureView.SurfaceTextureListener getSurfaceTextureListener();
+    View getView() {
+        return mPreview.getView();
+    }
 
     abstract void start();
 
@@ -66,8 +70,6 @@ abstract class CameraViewImpl {
         void onCameraClosed();
 
         void onPictureTaken(byte[] data);
-
-        void onTransformUpdated(Matrix matrix);
 
     }
 
