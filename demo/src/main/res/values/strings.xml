@@ -15,8 +15,6 @@
     <string name="app_name">CameraView Demo</string>
     <string name="camera_permission_confirmation">This app demonstrates the usage of CameraView. In order to do that, it needs permission to access camera.</string>
     <string name="camera_permission_not_granted">Camera app cannot do anything without camera permission.</string>
-    <string name="storage_permission_confirmation">This app saves taken photos to external storage.</string>
-    <string name="storage_permission_not_granted">The app does not have permission to save a photo.</string>
     <string name="picture_taken">Picture taken</string>
     <string name="switch_flash">Switch flash</string>
     <string name="switch_camera">Switch camera</string>
