@@ -55,7 +55,6 @@ public class MainActivity extends AppCompatActivity implements
     private static final String TAG = "MainActivity";
 
     private static final int REQUEST_CAMERA_PERMISSION = 1;
-    private static final int REQUEST_STORAGE_PERMISSION = 2;
 
     private static final String FRAGMENT_DIALOG = "dialog";
 
@@ -88,24 +87,8 @@ public class MainActivity extends AppCompatActivity implements
         public void onClick(View v) {
             switch (v.getId()) {
                 case R.id.take_picture:
-                    if (ContextCompat.checkSelfPermission(MainActivity.this,
-                            Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                            == PackageManager.PERMISSION_GRANTED) {
-                        if (mCameraView != null) {
-                            mCameraView.takePicture();
-                        }
-                    } else if (ActivityCompat.shouldShowRequestPermissionRationale(
-                            MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                        ConfirmationDialogFragment
-                                .newInstance(R.string.storage_permission_confirmation,
-                                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                                        REQUEST_STORAGE_PERMISSION,
-                                        R.string.storage_permission_not_granted)
-                                .show(getSupportFragmentManager(), FRAGMENT_DIALOG);
-                    } else {
-                        ActivityCompat.requestPermissions(MainActivity.this,
-                                new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                                REQUEST_STORAGE_PERMISSION);
+                    if (mCameraView != null) {
+                        mCameraView.takePicture();
                     }
                     break;
             }
@@ -184,15 +167,6 @@ public class MainActivity extends AppCompatActivity implements
                             Toast.LENGTH_SHORT).show();
                 }
                 // No need to start camera here; it is handled by onResume
-                break;
-            case REQUEST_STORAGE_PERMISSION:
-                if (permissions.length != 1 || grantResults.length != 1) {
-                    throw new RuntimeException("Error on requesting storage permission.");
-                }
-                if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(this, R.string.storage_permission_not_granted,
-                            Toast.LENGTH_SHORT).show();
-                }
                 break;
         }
     }
