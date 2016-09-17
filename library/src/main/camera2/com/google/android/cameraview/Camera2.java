@@ -429,7 +429,7 @@ class Camera2 extends CameraViewImpl {
             }
         }
         // fallback camera sizes and lower than Marshmellow
-        if(mPictureSizes.ratios().size() == 0){
+        if (mPictureSizes.ratios().size() == 0) {
             for (android.util.Size size : map.getOutputSizes(ImageFormat.JPEG)) {
                 mPictureSizes.add(new Size(size.getWidth(), size.getHeight()));
             }
