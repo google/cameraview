@@ -59,59 +59,64 @@ class Camera2 extends CameraViewImpl {
     }
 
     private final CameraManager mCameraManager;
-    private final ImageReader.OnImageAvailableListener mOnImageAvailableListener
-            = new ImageReader.OnImageAvailableListener() {
+
+    private final TextureView.SurfaceTextureListener mSurfaceTextureListener
+            = new TextureView.SurfaceTextureListener() {
 
         @Override
-        public void onImageAvailable(ImageReader reader) {
-            try (Image image = reader.acquireNextImage()) {
-                Image.Plane[] planes = image.getPlanes();
-                if (planes.length > 0) {
-                    ByteBuffer buffer = planes[0].getBuffer();
-                    byte[] data = new byte[buffer.remaining()];
-                    buffer.get(data);
-                    mCallback.onPictureTaken(data);
-                }
-            }
+        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+            mSurfaceInfo.configure(surface, width, height);
+            configureTransform();
+            startCaptureSession();
+        }
+
+        @Override
+        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+            mSurfaceInfo.configure(surface, width, height);
+            configureTransform();
+            startCaptureSession();
+        }
+
+        @Override
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+            mSurfaceInfo.configure(null, 0, 0);
+            return true;
+        }
+
+        @Override
+        public void onSurfaceTextureUpdated(SurfaceTexture surface) {
         }
 
     };
-    private final SurfaceInfo mSurfaceInfo = new SurfaceInfo();
-    private final SizeMap mPreviewSizes = new SizeMap();
-    private final SizeMap mPictureSizes = new SizeMap();
-    private String mCameraId;
-    private CameraCharacteristics mCameraCharacteristics;
-    private CameraDevice mCamera;
-    private CameraCaptureSession mCaptureSession;
-    private CaptureRequest.Builder mPreviewRequestBuilder;
-    private ImageReader mImageReader;
-    private int mFacing;
-    private AspectRatio mAspectRatio = Constants.DEFAULT_ASPECT_RATIO;
-    private boolean mAutoFocus;
-    private int mFlash;
-    private int mDisplayOrientation;
-    private PictureCaptureCallback mCaptureCallback = new PictureCaptureCallback() {
+
+    private final CameraDevice.StateCallback mCameraDeviceCallback
+            = new CameraDevice.StateCallback() {
 
         @Override
-        public void onPrecaptureRequired() {
-            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
-                    CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
-            setState(STATE_PRECAPTURE);
-            try {
-                mCaptureSession.capture(mPreviewRequestBuilder.build(), this, null);
-                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
-                        CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_IDLE);
-            } catch (CameraAccessException e) {
-                Log.e(TAG, "Failed to run precapture sequence.", e);
-            }
+        public void onOpened(@NonNull CameraDevice camera) {
+            mCamera = camera;
+            mCallback.onCameraOpened();
+            startCaptureSession();
         }
 
         @Override
-        public void onReady() {
-            captureStillPicture();
+        public void onClosed(@NonNull CameraDevice camera) {
+            mCallback.onCameraClosed();
+        }
+
+        @Override
+        public void onDisconnected(@NonNull CameraDevice camera) {
+            mCamera = null;
+        }
+
+        @Override
+        public void onError(@NonNull CameraDevice camera, int error) {
+            Log.e(TAG, "onError: " + camera.getId() + " (" + error + ")");
+            mCamera = null;
         }
 
     };
+
     private final CameraCaptureSession.StateCallback mSessionCallback
             = new CameraCaptureSession.StateCallback() {
 
@@ -142,61 +147,76 @@ class Camera2 extends CameraViewImpl {
         }
 
     };
-    private final TextureView.SurfaceTextureListener mSurfaceTextureListener
-            = new TextureView.SurfaceTextureListener() {
+
+    private PictureCaptureCallback mCaptureCallback = new PictureCaptureCallback() {
 
         @Override
-        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            mSurfaceInfo.configure(surface, width, height);
-            configureTransform();
-            startCaptureSession();
+        public void onPrecaptureRequired() {
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
+                    CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
+            setState(STATE_PRECAPTURE);
+            try {
+                mCaptureSession.capture(mPreviewRequestBuilder.build(), this, null);
+                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
+                        CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_IDLE);
+            } catch (CameraAccessException e) {
+                Log.e(TAG, "Failed to run precapture sequence.", e);
+            }
         }
 
         @Override
-        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-            mSurfaceInfo.configure(surface, width, height);
-            configureTransform();
-            startCaptureSession();
-        }
-
-        @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-            mSurfaceInfo.configure(null, 0, 0);
-            return true;
-        }
-
-        @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+        public void onReady() {
+            captureStillPicture();
         }
 
     };
-    private final CameraDevice.StateCallback mCameraDeviceCallback
-            = new CameraDevice.StateCallback() {
+
+    private final ImageReader.OnImageAvailableListener mOnImageAvailableListener
+            = new ImageReader.OnImageAvailableListener() {
 
         @Override
-        public void onOpened(@NonNull CameraDevice camera) {
-            mCamera = camera;
-            mCallback.onCameraOpened();
-            startCaptureSession();
-        }
-
-        @Override
-        public void onClosed(@NonNull CameraDevice camera) {
-            mCallback.onCameraClosed();
-        }
-
-        @Override
-        public void onDisconnected(@NonNull CameraDevice camera) {
-            mCamera = null;
-        }
-
-        @Override
-        public void onError(@NonNull CameraDevice camera, int error) {
-            Log.e(TAG, "onError: " + camera.getId() + " (" + error + ")");
-            mCamera = null;
+        public void onImageAvailable(ImageReader reader) {
+            try (Image image = reader.acquireNextImage()) {
+                Image.Plane[] planes = image.getPlanes();
+                if (planes.length > 0) {
+                    ByteBuffer buffer = planes[0].getBuffer();
+                    byte[] data = new byte[buffer.remaining()];
+                    buffer.get(data);
+                    mCallback.onPictureTaken(data);
+                }
+            }
         }
 
     };
+
+
+    private String mCameraId;
+
+    private CameraCharacteristics mCameraCharacteristics;
+
+    private CameraDevice mCamera;
+
+    private CameraCaptureSession mCaptureSession;
+
+    private CaptureRequest.Builder mPreviewRequestBuilder;
+
+    private ImageReader mImageReader;
+
+    private final SurfaceInfo mSurfaceInfo = new SurfaceInfo();
+
+    private final SizeMap mPreviewSizes = new SizeMap();
+
+    private final SizeMap mPictureSizes = new SizeMap();
+
+    private int mFacing;
+
+    private AspectRatio mAspectRatio = Constants.DEFAULT_ASPECT_RATIO;
+
+    private boolean mAutoFocus;
+
+    private int mFlash;
+
+    private int mDisplayOrientation;
 
     public Camera2(Callback callback, Context context) {
         super(callback);
@@ -238,11 +258,6 @@ class Camera2 extends CameraViewImpl {
     }
 
     @Override
-    int getFacing() {
-        return mFacing;
-    }
-
-    @Override
     void setFacing(int facing) {
         if (mFacing == facing) {
             return;
@@ -255,13 +270,13 @@ class Camera2 extends CameraViewImpl {
     }
 
     @Override
-    Set<AspectRatio> getSupportedAspectRatios() {
-        return mPreviewSizes.ratios();
+    int getFacing() {
+        return mFacing;
     }
 
     @Override
-    AspectRatio getAspectRatio() {
-        return mAspectRatio;
+    Set<AspectRatio> getSupportedAspectRatios() {
+        return mPreviewSizes.ratios();
     }
 
     @Override
@@ -279,8 +294,8 @@ class Camera2 extends CameraViewImpl {
     }
 
     @Override
-    boolean getAutoFocus() {
-        return mAutoFocus;
+    AspectRatio getAspectRatio() {
+        return mAspectRatio;
     }
 
     @Override
@@ -303,8 +318,8 @@ class Camera2 extends CameraViewImpl {
     }
 
     @Override
-    int getFlash() {
-        return mFlash;
+    boolean getAutoFocus() {
+        return mAutoFocus;
     }
 
     @Override
@@ -328,6 +343,11 @@ class Camera2 extends CameraViewImpl {
     }
 
     @Override
+    int getFlash() {
+        return mFlash;
+    }
+
+    @Override
     void takePicture() {
         if (mAutoFocus) {
             lockFocus();
@@ -344,7 +364,7 @@ class Camera2 extends CameraViewImpl {
 
     /**
      * Chooses a camera ID by the specified camera facing ({@link #mFacing}).
-     * <p>
+     *
      * <p>This rewrites {@link #mCameraId}, {@link #mCameraCharacteristics}, and optionally
      * {@link #mFacing}.</p>
      */
@@ -387,7 +407,7 @@ class Camera2 extends CameraViewImpl {
 
     /**
      * Collects some information from {@link #mCameraCharacteristics}.
-     * <p>
+     *
      * <p>This rewrites {@link #mPreviewSizes}, {@link #mPictureSizes}, and optionally,
      * {@link #mAspectRatio}.</p>
      */
@@ -409,7 +429,7 @@ class Camera2 extends CameraViewImpl {
             }
         }
         // fallback camera sizes and lower than Marshmellow
-        if (mPictureSizes.ratios().size() == 0) {
+        if(mPictureSizes.ratios().size() == 0){
             for (android.util.Size size : map.getOutputSizes(ImageFormat.JPEG)) {
                 mPictureSizes.add(new Size(size.getWidth(), size.getHeight()));
             }
@@ -429,7 +449,7 @@ class Camera2 extends CameraViewImpl {
 
     /**
      * Starts opening a camera device.
-     * <p>
+     *
      * <p>The result will be processed in {@link #mCameraDeviceCallback}.</p>
      */
     private void startOpeningCamera() {
@@ -442,9 +462,9 @@ class Camera2 extends CameraViewImpl {
 
     /**
      * Starts a capture session for camera preview.
-     * <p>
+     *
      * <p>This rewrites {@link #mPreviewRequestBuilder}.</p>
-     * <p>
+     *
      * <p>The result will be continuously processed in {@link #mSessionCallback}.</p>
      */
     private void startCaptureSession() {
