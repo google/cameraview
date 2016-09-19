@@ -424,8 +424,11 @@ class Camera2 extends CameraViewImpl {
         mPictureSizes.clear();
         // try to get hi-res output sizes for Marshmellow and higher
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            for (android.util.Size size : map.getHighResolutionOutputSizes(ImageFormat.JPEG)) {
-                mPictureSizes.add(new Size(size.getWidth(), size.getHeight()));
+             android.util.Size[] outputSizes = map.getHighResolutionOutputSizes(ImageFormat.JPEG);
+            if (outputSizes != null) {
+                for (android.util.Size size : map.getHighResolutionOutputSizes(ImageFormat.JPEG)) {
+                    mPictureSizes.add(new Size(size.getWidth(), size.getHeight()));
+                }
             }
         }
         // fallback camera sizes and lower than Marshmellow
