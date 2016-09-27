@@ -97,7 +97,7 @@ class Camera2 extends CameraViewImpl {
             try {
                 mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(),
                         mCaptureCallback, null);
-            } catch (CameraAccessException e) {
+            } catch (CameraAccessException | IllegalStateException e) {
                 Log.e(TAG, "Failed to start camera preview.", e);
             }
         }
@@ -109,7 +109,9 @@ class Camera2 extends CameraViewImpl {
 
         @Override
         public void onClosed(@NonNull CameraCaptureSession session) {
-            mCaptureSession = null;
+            if (mCaptureSession != null && mCaptureSession.equals(session)) {
+                mCaptureSession = null;
+            }
         }
 
     };
