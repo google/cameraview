@@ -104,8 +104,7 @@ class Camera1 extends CameraViewImpl {
     private void setUpPreview() {
         try {
             if (mPreview.getOutputClass() == SurfaceHolder.class) {
-                final boolean needsToStopPreview = mShowingPreview &&
-                        Build.VERSION.SDK_INT < Build.VERSION_CODES.ICE_CREAM_SANDWICH;
+                final boolean needsToStopPreview = mShowingPreview && Build.VERSION.SDK_INT < 14;
                 if (needsToStopPreview) {
                     mCamera.stopPreview();
                 }
@@ -233,16 +232,20 @@ class Camera1 extends CameraViewImpl {
 
     @Override
     void setDisplayOrientation(int displayOrientation) {
+        if (mDisplayOrientation == displayOrientation) {
+            return;
+        }
         mDisplayOrientation = displayOrientation;
         if (isCameraOpened()) {
             int cameraRotation = calcCameraRotation(displayOrientation);
             mCameraParameters.setRotation(cameraRotation);
             mCamera.setParameters(mCameraParameters);
-            if (mShowingPreview) {
+            final boolean needsToStopPreview = mShowingPreview && Build.VERSION.SDK_INT < 14;
+            if (needsToStopPreview) {
                 mCamera.stopPreview();
             }
             mCamera.setDisplayOrientation(cameraRotation);
-            if (mShowingPreview) {
+            if (needsToStopPreview) {
                 mCamera.startPreview();
             }
         }
@@ -299,9 +302,10 @@ class Camera1 extends CameraViewImpl {
     }
 
     private void adjustCameraParameters() {
-        final SortedSet<Size> sizes = mPreviewSizes.sizes(mAspectRatio);
+        SortedSet<Size> sizes = mPreviewSizes.sizes(mAspectRatio);
         if (sizes == null) { // Not supported
             mAspectRatio = chooseAspectRatio();
+            sizes = mPreviewSizes.sizes(mAspectRatio);
         }
         Size size = chooseOptimalSize(sizes);
         final Camera.Size currentSize = mCameraParameters.getPictureSize();

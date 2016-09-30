@@ -271,7 +271,7 @@ public class CameraViewTest {
         return new ViewAssertion() {
             @Override
             public void check(View view, NoMatchingViewException noViewFoundException) {
-                if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+                if (android.os.Build.VERSION.SDK_INT < 14) {
                     return;
                 }
                 CameraView cameraView = (CameraView) view;

@@ -26,7 +26,7 @@ import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 
-@TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
+@TargetApi(14)
 class TextureViewPreview extends PreviewImpl {
 
     private final TextureView mTextureView;
@@ -64,10 +64,10 @@ class TextureViewPreview extends PreviewImpl {
         });
     }
 
-    @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1)
+    // This method is called only from Camera2.
+    @TargetApi(15)
     @Override
     void setBufferSize(int width, int height) {
-        // This method is called only from Camera2.
         mTextureView.getSurfaceTexture().setDefaultBufferSize(width, height);
     }
 

@@ -34,6 +34,7 @@ android {
         main.java.srcDirs += 'src/main/api9'
         main.java.srcDirs += 'src/main/api14'
         main.java.srcDirs += 'src/main/api21'
+        main.java.srcDirs += 'src/main/api23'
     }
 }
 

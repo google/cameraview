@@ -41,7 +41,7 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.SortedSet;
 
-@TargetApi(Build.VERSION_CODES.LOLLIPOP)
+@TargetApi(21)
 class Camera2 extends CameraViewImpl {
 
     private static final String TAG = "Camera2";
@@ -390,24 +390,16 @@ class Camera2 extends CameraViewImpl {
             mPreviewSizes.add(new Size(size.getWidth(), size.getHeight()));
         }
         mPictureSizes.clear();
-        // try to get hi-res output sizes for Marshmallow and higher
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            android.util.Size[] outputSizes = map.getHighResolutionOutputSizes(ImageFormat.JPEG);
-            if (outputSizes != null) {
-                for (android.util.Size size : map.getHighResolutionOutputSizes(ImageFormat.JPEG)) {
-                    mPictureSizes.add(new Size(size.getWidth(), size.getHeight()));
-                }
-            }
-        }
-        // fallback camera sizes and lower than Marshmallow
-        if (mPictureSizes.ratios().size() == 0) {
-            for (android.util.Size size : map.getOutputSizes(ImageFormat.JPEG)) {
-                mPictureSizes.add(new Size(size.getWidth(), size.getHeight()));
-            }
-        }
+        collectPictureSizes(mPictureSizes, map);
 
         if (!mPreviewSizes.ratios().contains(mAspectRatio)) {
             mAspectRatio = mPreviewSizes.ratios().iterator().next();
+        }
+    }
+
+    protected void collectPictureSizes(SizeMap sizes, StreamConfigurationMap map) {
+        for (android.util.Size size : map.getOutputSizes(ImageFormat.JPEG)) {
+            mPictureSizes.add(new Size(size.getWidth(), size.getHeight()));
         }
     }
 

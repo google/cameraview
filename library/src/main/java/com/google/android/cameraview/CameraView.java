@@ -90,7 +90,7 @@ public class CameraView extends FrameLayout {
         super(context, attrs, defStyleAttr);
         // Internal setup
         final PreviewImpl preview;
-        if (Build.VERSION.SDK_INT >= 24 || Build.VERSION.SDK_INT < 14) {
+        if (Build.VERSION.SDK_INT < 14) {
             preview = new SurfaceViewPreview(context, this);
         } else {
             preview = new TextureViewPreview(context, this);
@@ -98,8 +98,10 @@ public class CameraView extends FrameLayout {
         mCallbacks = new CallbackBridge();
         if (Build.VERSION.SDK_INT < 21) {
             mImpl = new Camera1(mCallbacks, preview);
-        } else {
+        } else if (Build.VERSION.SDK_INT < 23) {
             mImpl = new Camera2(mCallbacks, preview, context);
+        } else {
+            mImpl = new Camera2Api23(mCallbacks, preview, context);
         }
         // Attributes
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
