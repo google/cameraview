@@ -26,7 +26,7 @@ import android.view.ViewGroup;
 
 class SurfaceViewPreview extends PreviewImpl {
 
-    private final SurfaceView mSurfaceView;
+    final SurfaceView mSurfaceView;
 
     SurfaceViewPreview(Context context, ViewGroup parent) {
         final View view = View.inflate(context, R.layout.surface_view, parent);

@@ -45,7 +45,7 @@ class Camera1 extends CameraViewImpl {
 
     private int mCameraId;
 
-    private Camera mCamera;
+    Camera mCamera;
 
     private Camera.Parameters mCameraParameters;
 
@@ -101,7 +101,7 @@ class Camera1 extends CameraViewImpl {
     }
 
     @SuppressLint("NewApi") // Suppresses Camera#setPreviewTexture
-    private void setUpPreview() {
+    void setUpPreview() {
         try {
             if (mPreview.getOutputClass() == SurfaceHolder.class) {
                 final boolean needsToStopPreview = mShowingPreview &&
@@ -221,7 +221,7 @@ class Camera1 extends CameraViewImpl {
         }
     }
 
-    private void takePictureInternal() {
+    void takePictureInternal() {
         mCamera.takePicture(null, null, null, new Camera.PictureCallback() {
             @Override
             public void onPictureTaken(byte[] data, Camera camera) {
@@ -298,7 +298,7 @@ class Camera1 extends CameraViewImpl {
         return r;
     }
 
-    private void adjustCameraParameters() {
+    void adjustCameraParameters() {
         final SortedSet<Size> sizes = mPreviewSizes.sizes(mAspectRatio);
         if (sizes == null) { // Not supported
             mAspectRatio = chooseAspectRatio();
