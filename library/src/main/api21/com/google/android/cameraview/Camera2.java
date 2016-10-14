@@ -118,7 +118,7 @@ class Camera2 extends CameraViewImpl {
 
     };
 
-    private PictureCaptureCallback mCaptureCallback = new PictureCaptureCallback() {
+    PictureCaptureCallback mCaptureCallback = new PictureCaptureCallback() {
 
         @Override
         public void onPrecaptureRequired() {
@@ -164,11 +164,11 @@ class Camera2 extends CameraViewImpl {
 
     private CameraCharacteristics mCameraCharacteristics;
 
-    private CameraDevice mCamera;
+    CameraDevice mCamera;
 
-    private CameraCaptureSession mCaptureSession;
+    CameraCaptureSession mCaptureSession;
 
-    private CaptureRequest.Builder mPreviewRequestBuilder;
+    CaptureRequest.Builder mPreviewRequestBuilder;
 
     private ImageReader mImageReader;
 
@@ -435,7 +435,7 @@ class Camera2 extends CameraViewImpl {
      * <p>This rewrites {@link #mPreviewRequestBuilder}.</p>
      * <p>The result will be continuously processed in {@link #mSessionCallback}.</p>
      */
-    private void startCaptureSession() {
+    void startCaptureSession() {
         if (!isCameraOpened() || !mPreview.isReady()) {
             return;
         }
@@ -482,7 +482,7 @@ class Camera2 extends CameraViewImpl {
     /**
      * Updates the internal state of auto-focus to {@link #mAutoFocus}.
      */
-    private void updateAutoFocus() {
+    void updateAutoFocus() {
         if (mAutoFocus) {
             int[] modes = mCameraCharacteristics.get(
                     CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES);
@@ -505,7 +505,7 @@ class Camera2 extends CameraViewImpl {
     /**
      * Updates the internal state of flash to {@link #mFlash}.
      */
-    private void updateFlash() {
+    void updateFlash() {
         switch (mFlash) {
             case Constants.FLASH_OFF:
                 mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
@@ -557,7 +557,7 @@ class Camera2 extends CameraViewImpl {
     /**
      * Captures a still picture.
      */
-    private void captureStillPicture() {
+    void captureStillPicture() {
         try {
             CaptureRequest.Builder captureRequestBuilder = mCamera.createCaptureRequest(
                     CameraDevice.TEMPLATE_STILL_CAPTURE);
@@ -618,7 +618,7 @@ class Camera2 extends CameraViewImpl {
      * Unlocks the auto-focus and restart camera preview. This is supposed to be called after
      * capturing a still picture.
      */
-    private void unlockFocus() {
+    void unlockFocus() {
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
                 CaptureRequest.CONTROL_AF_TRIGGER_CANCEL);
         try {
@@ -649,6 +649,9 @@ class Camera2 extends CameraViewImpl {
         static final int STATE_CAPTURING = 5;
 
         private int mState;
+
+        PictureCaptureCallback() {
+        }
 
         void setState(int state) {
             mState = state;
