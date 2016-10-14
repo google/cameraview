@@ -106,7 +106,7 @@ class TextureViewPreview extends PreviewImpl {
      * Configures the transform matrix for TextureView based on {@link #mDisplayOrientation} and
      * the surface size.
      */
-    private void configureTransform() {
+    void configureTransform() {
         Matrix matrix = new Matrix();
         if (mDisplayOrientation % 180 == 90) {
             final int width = getWidth();

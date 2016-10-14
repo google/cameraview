@@ -69,7 +69,7 @@ public class CameraView extends FrameLayout {
     public @interface Flash {
     }
 
-    private final CameraViewImpl mImpl;
+    final CameraViewImpl mImpl;
 
     private final CallbackBridge mCallbacks;
 
@@ -383,6 +383,9 @@ public class CameraView extends FrameLayout {
         private final ArrayList<Callback> mCallbacks = new ArrayList<>();
 
         private boolean mRequestLayoutOnOpen;
+
+        CallbackBridge() {
+        }
 
         public void add(Callback callback) {
             mCallbacks.add(callback);
