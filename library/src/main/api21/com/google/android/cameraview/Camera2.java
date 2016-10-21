@@ -428,7 +428,7 @@ class Camera2 extends CameraViewImpl {
      * <p>The result will be continuously processed in {@link #mSessionCallback}.</p>
      */
     void startCaptureSession() {
-        if (!isCameraOpened() || !mPreview.isReady()) {
+        if (!isCameraOpened() || !mPreview.isReady() || mImageReader == null) {
             return;
         }
         Size previewSize = chooseOptimalSize();
