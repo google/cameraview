@@ -16,8 +16,6 @@
 
 package com.google.android.cameraview.demo;
 
-import com.google.android.cameraview.CameraView;
-
 import android.Manifest;
 import android.app.Dialog;
 import android.content.DialogInterface;
@@ -43,12 +41,18 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
+import com.google.android.cameraview.CameraView;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
 
+/**
+ * This demo app saves the taken picture to a constant file.
+ * $ adb pull /sdcard/Android/data/com.google.android.cameraview.demo/files/Pictures/picture.jpg
+ */
 public class MainActivity extends AppCompatActivity implements
         ActivityCompat.OnRequestPermissionsResultCallback {
 
@@ -156,7 +160,7 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
+            @NonNull int[] grantResults) {
         switch (requestCode) {
             case REQUEST_CAMERA_PERMISSION:
                 if (permissions.length != 1 || grantResults.length != 1) {
@@ -229,8 +233,6 @@ public class MainActivity extends AppCompatActivity implements
             getBackgroundHandler().post(new Runnable() {
                 @Override
                 public void run() {
-                    // This demo app saves the taken picture to a constant file.
-                    // $ adb pull /sdcard/Android/data/com.google.android.cameraview.demo/files/Pictures/picture.jpg
                     File file = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES),
                             "picture.jpg");
                     OutputStream os = null;
@@ -263,8 +265,7 @@ public class MainActivity extends AppCompatActivity implements
         private static final String ARG_NOT_GRANTED_MESSAGE = "not_granted_message";
 
         public static ConfirmationDialogFragment newInstance(@StringRes int message,
-                                                             String[] permissions, int requestCode,
-                                                             @StringRes int notGrantedMessage) {
+                String[] permissions, int requestCode, @StringRes int notGrantedMessage) {
             ConfirmationDialogFragment fragment = new ConfirmationDialogFragment();
             Bundle args = new Bundle();
             args.putInt(ARG_MESSAGE, message);

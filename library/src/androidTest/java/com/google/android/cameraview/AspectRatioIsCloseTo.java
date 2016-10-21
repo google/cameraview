@@ -16,12 +16,12 @@
 
 package com.google.android.cameraview;
 
+import static org.hamcrest.CoreMatchers.either;
+
 import org.hamcrest.Description;
 import org.hamcrest.Factory;
 import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeMatcher;
-
-import static org.hamcrest.CoreMatchers.either;
 
 public class AspectRatioIsCloseTo extends TypeSafeMatcher<AspectRatio> {
 

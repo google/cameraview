@@ -70,14 +70,14 @@ class Camera1 extends CameraViewImpl {
     Camera1(Callback callback, PreviewImpl preview) {
         super(callback, preview);
         preview.setCallback(new PreviewImpl.Callback() {
-                @Override
-                public void onSurfaceChanged() {
-                    if (mCamera != null) {
-                        setUpPreview();
-                        adjustCameraParameters();
-                    }
+            @Override
+            public void onSurfaceChanged() {
+                if (mCamera != null) {
+                    setUpPreview();
+                    adjustCameraParameters();
                 }
-            });
+            }
+        });
     }
 
     @Override
@@ -100,7 +100,8 @@ class Camera1 extends CameraViewImpl {
         releaseCamera();
     }
 
-    @SuppressLint("NewApi") // Suppresses Camera#setPreviewTexture
+    // Suppresses Camera#setPreviewTexture
+    @SuppressLint("NewApi")
     void setUpPreview() {
         try {
             if (mPreview.getOutputClass() == SurfaceHolder.class) {
@@ -205,7 +206,8 @@ class Camera1 extends CameraViewImpl {
     @Override
     void takePicture() {
         if (!isCameraOpened()) {
-            throw new IllegalStateException("Camera is not ready. Call start() before takePicture().");
+            throw new IllegalStateException(
+                    "Camera is not ready. Call start() before takePicture().");
         }
         if (getAutoFocus()) {
             mCamera.cancelAutoFocus();
@@ -399,7 +401,7 @@ class Camera1 extends CameraViewImpl {
         if (isCameraOpened()) {
             List<String> modes = mCameraParameters.getSupportedFlashModes();
             String mode = FLASH_MODES.get(flash);
-            if (modes!= null && modes.contains(mode)) {
+            if (modes != null && modes.contains(mode)) {
                 mCameraParameters.setFlashMode(mode);
                 mFlash = flash;
                 return true;

@@ -30,7 +30,6 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
-import android.os.Build;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.util.SparseIntArray;
@@ -190,11 +189,11 @@ class Camera2 extends CameraViewImpl {
         super(callback, preview);
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
         mPreview.setCallback(new PreviewImpl.Callback() {
-                @Override
-                public void onSurfaceChanged() {
-                    startCaptureSession();
-                }
-            });
+            @Override
+            public void onSurfaceChanged() {
+                startCaptureSession();
+            }
+        });
     }
 
     @Override
@@ -596,8 +595,8 @@ class Camera2 extends CameraViewImpl {
                     new CameraCaptureSession.CaptureCallback() {
                         @Override
                         public void onCaptureCompleted(@NonNull CameraCaptureSession session,
-                                                       @NonNull CaptureRequest request,
-                                                       @NonNull TotalCaptureResult result) {
+                                @NonNull CaptureRequest request,
+                                @NonNull TotalCaptureResult result) {
                             unlockFocus();
                         }
                     }, null);
@@ -651,15 +650,13 @@ class Camera2 extends CameraViewImpl {
 
         @Override
         public void onCaptureProgressed(@NonNull CameraCaptureSession session,
-                                        @NonNull CaptureRequest request,
-                                        @NonNull CaptureResult partialResult) {
+                @NonNull CaptureRequest request, @NonNull CaptureResult partialResult) {
             process(partialResult);
         }
 
         @Override
         public void onCaptureCompleted(@NonNull CameraCaptureSession session,
-                                       @NonNull CaptureRequest request,
-                                       @NonNull TotalCaptureResult result) {
+                @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
             process(result);
         }
 
