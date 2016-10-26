@@ -19,6 +19,8 @@ package com.google.android.cameraview;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -30,6 +32,7 @@ import android.support.v4.os.ParcelableCompatCreatorCallbacks;
 import android.util.AttributeSet;
 import android.widget.FrameLayout;
 
+import java.io.ByteArrayOutputStream;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
@@ -416,13 +419,43 @@ public class CameraView extends FrameLayout {
         @Override
         public void onPictureTaken(byte[] data) {
             for (Callback callback : mCallbacks) {
-                callback.onPictureTaken(CameraView.this, data);
+                callback.onPictureTaken(CameraView.this, fitViewport(data));
             }
         }
 
         public void reserveRequestLayoutOnOpen() {
             mRequestLayoutOnOpen = true;
         }
+    }
+
+    /**
+     * Adjust the image size to the aspect ratio of the the current size of the view
+     * @return The cropped image.
+     */
+    private byte[] fitViewport(byte[] data) {
+        Bitmap picture = BitmapFactory.decodeByteArray(data, 0, data.length);
+
+        int[] pictureSize = {picture.getWidth(), picture.getHeight()};
+        int[] viewSize = {getWidth(), getHeight()};
+        int[] cropSize = {0, 0};
+
+//        Get the larger dimension
+        int largeDimen = 0;
+        if (viewSize[0] < viewSize[1]) {
+            largeDimen = 1;
+        }
+        int smallDimen = (largeDimen + 1) % 2;
+
+//        Assign real dimensions
+        cropSize[largeDimen] = pictureSize[largeDimen];
+        cropSize[smallDimen] = pictureSize[largeDimen] * viewSize[smallDimen] / viewSize[largeDimen];
+
+//        Always start from the top left corner
+        Bitmap croppedPicture = Bitmap.createBitmap(picture, 0, 0, cropSize[0], cropSize[1]);
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        croppedPicture.compress(Bitmap.CompressFormat.JPEG, 100, stream);
+
+        return stream.toByteArray();
     }
 
     protected static class SavedState extends BaseSavedState {
