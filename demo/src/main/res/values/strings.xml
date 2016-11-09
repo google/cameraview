@@ -16,9 +16,12 @@
     <string name="camera_permission_confirmation">This app demonstrates the usage of CameraView. In order to do that, it needs permission to access camera.</string>
     <string name="camera_permission_not_granted">Camera app cannot do anything without camera permission.</string>
     <string name="picture_taken">Picture taken</string>
+    <string name="picture_taken_rotating">Picture taken, angle %1$s, rotating</string>
     <string name="switch_flash">Switch flash</string>
     <string name="switch_camera">Switch camera</string>
     <string name="flash_auto">Flash auto</string>
     <string name="flash_off">Flash off</string>
     <string name="flash_on">Flash on</string>
+    <string name="rotation_on">Take photo with rotation</string>
+    <string name="rotation_option_click">"Take with rotation %1$b"</string>
 </resources>
