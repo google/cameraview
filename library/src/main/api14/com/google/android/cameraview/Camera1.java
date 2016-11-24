@@ -307,16 +307,23 @@ class Camera1 extends CameraViewImpl {
             mAspectRatio = chooseAspectRatio();
             sizes = mPreviewSizes.sizes(mAspectRatio);
         }
-        Size size = chooseOptimalSize(sizes);
+
+        Size suggestedSize = Size.optimalSize(new Size(mPreview.getWidth(), mPreview.getHeight()), sizes);
+        Size size = suggestedSize;
+        if(mCallback != null) {
+            size = mCallback.onChoosePreviewSize(mPreviewSizes, suggestedSize, mAspectRatio);
+        }
         final Camera.Size currentSize = mCameraParameters.getPictureSize();
         if (currentSize.width != size.getWidth() || currentSize.height != size.getHeight()) {
-            // Largest picture size in this ratio
-            final Size pictureSize = mPictureSizes.sizes(mAspectRatio).last();
+            if(mCallback != null) {
+                // Largest picture size in this ratio
+                final Size pictureSize = mCallback.onChoosePictureSize(mPictureSizes, mAspectRatio);
+                mCameraParameters.setPictureSize(pictureSize.getWidth(), pictureSize.getHeight());
+            }
             if (mShowingPreview) {
                 mCamera.stopPreview();
             }
             mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
-            mCameraParameters.setPictureSize(pictureSize.getWidth(), pictureSize.getHeight());
             mCameraParameters.setRotation(calcCameraRotation(mDisplayOrientation));
             setAutoFocusInternal(mAutoFocus);
             setFlashInternal(mFlash);
