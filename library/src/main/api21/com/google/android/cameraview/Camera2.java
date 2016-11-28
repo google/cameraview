@@ -449,52 +449,25 @@ class Camera2 extends CameraViewImpl {
                 mAutoFocus = false;
                 mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
             } else {
-                if (isAutoFocusSupported())
-                    mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
-                            CaptureRequest.CONTROL_AF_MODE_AUTO);
-                else
+                if (getHardwareLevelSupported() == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY) {
+                    mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
+                } else {
                     mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
                             CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+                }
             }
         } else {
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
         }
     }
 
-    private float getMinimumFocusDistance() {
-        if (mCameraId == null)
-            return 0;
-
-        Float minimumLens = null;
-        try {
-            CameraCharacteristics cameraCharacteristics = mCameraManager.getCameraCharacteristics(mCameraId);
-            minimumLens = cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE);
-        } catch (Exception e) {
-            Log.e(TAG, "isHardwareLevelSupported Error", e);
-        }
-        if (minimumLens != null)
-            return minimumLens;
-        return 0;
-    }
-
-    /**
-     * @return Returns true if autofocus is supported
-     */
-    private boolean isAutoFocusSupported() {
-        return  isHardwareLevelSupported(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY) || getMinimumFocusDistance() > 0;
-    }
-
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    private boolean isHardwareLevelSupported(int requiredLevel) {
-        boolean res = false;
-        if (mCameraId == null)
-            return res;
+    private int getHardwareLevelSupported() {
+        if (mCameraId == null) {
+            return -1;
+        }
         try {
             CameraCharacteristics cameraCharacteristics = mCameraManager.getCameraCharacteristics(mCameraId);
-            if(cameraCharacteristics == null) {
-                return res;
-            }
-
             int deviceLevel = cameraCharacteristics.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL);
             switch (deviceLevel) {
                 case CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_3:
@@ -513,19 +486,11 @@ class Camera2 extends CameraViewImpl {
                     Log.d(TAG, "Unknown INFO_SUPPORTED_HARDWARE_LEVEL: " + deviceLevel);
                     break;
             }
-
-
-            if (deviceLevel == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY) {
-                res = requiredLevel == deviceLevel;
-            } else {
-                // deviceLevel is not LEGACY, can use numerical sort
-                res = requiredLevel <= deviceLevel;
-            }
-
+            return deviceLevel;
         } catch (Exception e) {
-            Log.e(TAG, "isHardwareLevelSupported Error", e);
+            Log.e(TAG, "getHardwareLevelSupported Error", e);
         }
-        return res;
+        return -1;
     }
 
     /**
