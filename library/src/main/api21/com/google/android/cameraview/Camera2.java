@@ -24,12 +24,15 @@ import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
+import android.os.Build;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.util.SparseIntArray;
@@ -37,7 +40,6 @@ import android.view.Surface;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Set;
-import java.util.SortedSet;
 
 @TargetApi(21)
 class Camera2 extends CameraViewImpl {
@@ -70,18 +72,43 @@ class Camera2 extends CameraViewImpl {
             };
     private final SizeMap mPreviewSizes = new SizeMap();
     private final SizeMap mPictureSizes = new SizeMap();
-    CameraDevice mCamera;
-    CameraCaptureSession mCaptureSession;
-    CaptureRequest.Builder mPreviewRequestBuilder;
+    private CameraDevice mCamera;
+    private CameraCaptureSession mCaptureSession;
+    private CaptureRequest.Builder mPreviewRequestBuilder;
     private String mCameraId;
     private CameraCharacteristics mCameraCharacteristics;
     private ImageReader mImageReader;
     private int mFacing;
     private AspectRatio mAspectRatio = Constants.DEFAULT_ASPECT_RATIO;
+    private final CameraDevice.StateCallback mCameraDeviceCallback = new CameraDevice.StateCallback() {
+
+        @Override
+        public void onOpened(@NonNull CameraDevice camera) {
+            mCamera = camera;
+            mCallback.onCameraOpened();
+            startCaptureSession();
+        }
+
+        @Override
+        public void onClosed(@NonNull CameraDevice camera) {
+            mCallback.onCameraClosed();
+        }
+
+        @Override
+        public void onDisconnected(@NonNull CameraDevice camera) {
+            mCamera = null;
+        }
+
+        @Override
+        public void onError(@NonNull CameraDevice camera, int error) {
+            Log.e(TAG, "onError: " + camera.getId() + " (" + error + ")");
+            mCamera = null;
+        }
+    };
     private boolean mAutoFocus;
     private int mFlash;
     private int mDisplayOrientation;
-    PictureCaptureCallback mCaptureCallback = new PictureCaptureCallback() {
+    private PictureCaptureCallback mCaptureCallback = new PictureCaptureCallback() {
 
         @Override
         public void onPrecaptureRequired() {
@@ -94,6 +121,20 @@ class Camera2 extends CameraViewImpl {
                         CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_IDLE);
             } catch (CameraAccessException e) {
                 Log.e(TAG, "Failed to run precapture sequence.", e);
+            }
+        }
+
+        @Override
+        public void lockAutoFocus() {
+            try {
+                // This is how to tell the camera to lock focus.
+                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
+                CaptureRequest captureRequest = mPreviewRequestBuilder.build();
+                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
+                        null); // prevent CONTROL_AF_TRIGGER_START from calling over and over again
+                mCaptureSession.capture(captureRequest, mCaptureCallback, null);
+            } catch (CameraAccessException e) {
+                e.printStackTrace();
             }
         }
 
@@ -131,31 +172,6 @@ class Camera2 extends CameraViewImpl {
             if (mCaptureSession != null && mCaptureSession.equals(session)) {
                 mCaptureSession = null;
             }
-        }
-    };
-    private final CameraDevice.StateCallback mCameraDeviceCallback = new CameraDevice.StateCallback() {
-
-        @Override
-        public void onOpened(@NonNull CameraDevice camera) {
-            mCamera = camera;
-            mCallback.onCameraOpened();
-            startCaptureSession();
-        }
-
-        @Override
-        public void onClosed(@NonNull CameraDevice camera) {
-            mCallback.onCameraClosed();
-        }
-
-        @Override
-        public void onDisconnected(@NonNull CameraDevice camera) {
-            mCamera = null;
-        }
-
-        @Override
-        public void onError(@NonNull CameraDevice camera, int error) {
-            Log.e(TAG, "onError: " + camera.getId() + " (" + error + ")");
-            mCamera = null;
         }
     };
 
@@ -403,9 +419,10 @@ class Camera2 extends CameraViewImpl {
             return;
         }
 
-        Size suggestedSize = Size.optimalSize(new Size(mPreview.getWidth(), mPreview.getHeight()), mPreviewSizes.sizes(mAspectRatio));
+        Size suggestedSize = Size.optimalSize(new Size(mPreview.getWidth(), mPreview.getHeight()),
+                mPreviewSizes.sizes(mAspectRatio));
         Size previewSize = suggestedSize;
-        if(mCallback != null) {
+        if (mCallback != null) {
             previewSize = mCallback.onChoosePreviewSize(mPreviewSizes, suggestedSize, mAspectRatio);
         }
         Log.d(TAG, "Preview size is [" + previewSize.toString() + "]");
@@ -420,7 +437,6 @@ class Camera2 extends CameraViewImpl {
         }
     }
 
-
     /**
      * Updates the internal state of auto-focus to {@link #mAutoFocus}.
      */
@@ -433,12 +449,83 @@ class Camera2 extends CameraViewImpl {
                 mAutoFocus = false;
                 mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
             } else {
-                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
-                        CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+                if (isAutoFocusSupported())
+                    mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
+                            CaptureRequest.CONTROL_AF_MODE_AUTO);
+                else
+                    mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
+                            CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
             }
         } else {
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
         }
+    }
+
+    private float getMinimumFocusDistance() {
+        if (mCameraId == null)
+            return 0;
+
+        Float minimumLens = null;
+        try {
+            CameraCharacteristics cameraCharacteristics = mCameraManager.getCameraCharacteristics(mCameraId);
+            minimumLens = cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE);
+        } catch (Exception e) {
+            Log.e(TAG, "isHardwareLevelSupported Error", e);
+        }
+        if (minimumLens != null)
+            return minimumLens;
+        return 0;
+    }
+
+    /**
+     * @return Returns true if autofocus is supported
+     */
+    private boolean isAutoFocusSupported() {
+        return  isHardwareLevelSupported(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY) || getMinimumFocusDistance() > 0;
+    }
+
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    private boolean isHardwareLevelSupported(int requiredLevel) {
+        boolean res = false;
+        if (mCameraId == null)
+            return res;
+        try {
+            CameraCharacteristics cameraCharacteristics = mCameraManager.getCameraCharacteristics(mCameraId);
+            if(cameraCharacteristics == null) {
+                return res;
+            }
+
+            int deviceLevel = cameraCharacteristics.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL);
+            switch (deviceLevel) {
+                case CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_3:
+                    Log.d(TAG, "Camera support level: INFO_SUPPORTED_HARDWARE_LEVEL_3");
+                    break;
+                case CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_FULL:
+                    Log.d(TAG, "Camera support level: INFO_SUPPORTED_HARDWARE_LEVEL_FULL");
+                    break;
+                case CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY:
+                    Log.d(TAG, "Camera support level: INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY");
+                    break;
+                case CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED:
+                    Log.d(TAG, "Camera support level: INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED");
+                    break;
+                default:
+                    Log.d(TAG, "Unknown INFO_SUPPORTED_HARDWARE_LEVEL: " + deviceLevel);
+                    break;
+            }
+
+
+            if (deviceLevel == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY) {
+                res = requiredLevel == deviceLevel;
+            } else {
+                // deviceLevel is not LEGACY, can use numerical sort
+                res = requiredLevel <= deviceLevel;
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "isHardwareLevelSupported Error", e);
+        }
+        return res;
     }
 
     /**
@@ -567,7 +654,19 @@ class Camera2 extends CameraViewImpl {
         static final int STATE_WAITING = 4;
         static final int STATE_CAPTURING = 5;
 
+        private static final long LOCK_FOCUS_DELAY_ON_FOCUSED = 5000;
+        private static final long LOCK_FOCUS_DELAY_ON_UNFOCUSED = 1000;
+
         private int mState;
+        private Integer mLastAfState;
+        private Handler mUiHandler = new Handler(); // UI handler
+        private Runnable mLockAutoFocusRunnable = new Runnable() {
+
+            @Override
+            public void run() {
+                lockAutoFocus();
+            }
+        };
 
         PictureCaptureCallback() {
         }
@@ -588,8 +687,50 @@ class Camera2 extends CameraViewImpl {
             process(result);
         }
 
+        abstract public void lockAutoFocus();
+
         private void process(@NonNull CaptureResult result) {
             switch (mState) {
+                case STATE_PREVIEW: {
+                    // We have nothing to do when the camera preview is working normally.
+                    Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
+                    if (afState != null && !afState.equals(mLastAfState)) {
+                        switch (afState) {
+                            case CaptureResult.CONTROL_AF_STATE_INACTIVE:
+                                Log.d(TAG, "CaptureResult.CONTROL_AF_STATE_INACTIVE");
+                                lockAutoFocus();
+                                break;
+                            case CaptureResult.CONTROL_AF_STATE_ACTIVE_SCAN:
+                                Log.d(TAG, "CaptureResult.CONTROL_AF_STATE_ACTIVE_SCAN");
+                                break;
+                            case CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED:
+                                Log.d(TAG, "CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED");
+                                mUiHandler.removeCallbacks(mLockAutoFocusRunnable);
+                                mUiHandler.postDelayed(mLockAutoFocusRunnable, LOCK_FOCUS_DELAY_ON_FOCUSED);
+                                break;
+                            case CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED:
+                                mUiHandler.removeCallbacks(mLockAutoFocusRunnable);
+                                mUiHandler.postDelayed(mLockAutoFocusRunnable, LOCK_FOCUS_DELAY_ON_UNFOCUSED);
+                                Log.d(TAG, "CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED");
+                                break;
+                            case CaptureResult.CONTROL_AF_STATE_PASSIVE_UNFOCUSED:
+                                mUiHandler.removeCallbacks(mLockAutoFocusRunnable);
+                                //mUiHandler.postDelayed(mLockAutoFocusRunnable, LOCK_FOCUS_DELAY_ON_UNFOCUSED);
+                                Log.d(TAG, "CaptureResult.CONTROL_AF_STATE_PASSIVE_UNFOCUSED");
+                                break;
+                            case CaptureResult.CONTROL_AF_STATE_PASSIVE_SCAN:
+                                Log.d(TAG, "CaptureResult.CONTROL_AF_STATE_PASSIVE_SCAN");
+                                break;
+                            case CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED:
+                                mUiHandler.removeCallbacks(mLockAutoFocusRunnable);
+                                //mUiHandler.postDelayed(mLockAutoFocusRunnable, LOCK_FOCUS_DELAY_ON_FOCUSED);
+                                Log.d(TAG, "CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED");
+                                break;
+                        }
+                    }
+                    mLastAfState = afState;
+                    break;
+                }
                 case STATE_LOCKING: {
                     Integer af = result.get(CaptureResult.CONTROL_AF_STATE);
                     if (af == null) {
