@@ -22,7 +22,6 @@ import android.hardware.Camera;
 import android.os.Build;
 import android.support.v4.util.SparseArrayCompat;
 import android.view.SurfaceHolder;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
@@ -43,18 +42,12 @@ class Camera1 extends CameraViewImpl {
         FLASH_MODES.put(Constants.FLASH_RED_EYE, Camera.Parameters.FLASH_MODE_RED_EYE);
     }
 
-    private int mCameraId;
-
-    Camera mCamera;
-
-    private Camera.Parameters mCameraParameters;
-
     private final Camera.CameraInfo mCameraInfo = new Camera.CameraInfo();
-
     private final SizeMap mPreviewSizes = new SizeMap();
-
     private final SizeMap mPictureSizes = new SizeMap();
-
+    private Camera mCamera;
+    private int mCameraId;
+    private Camera.Parameters mCameraParameters;
     private AspectRatio mAspectRatio;
 
     private boolean mShowingPreview;
@@ -70,14 +63,14 @@ class Camera1 extends CameraViewImpl {
     Camera1(Callback callback, PreviewImpl preview) {
         super(callback, preview);
         preview.setCallback(new PreviewImpl.Callback() {
-                @Override
-                public void onSurfaceChanged() {
-                    if (mCamera != null) {
-                        setUpPreview();
-                        adjustCameraParameters();
-                    }
+            @Override
+            public void onSurfaceChanged() {
+                if (mCamera != null) {
+                    setUpPreview();
+                    adjustCameraParameters();
                 }
-            });
+            }
+        });
     }
 
     @Override
@@ -100,8 +93,9 @@ class Camera1 extends CameraViewImpl {
         releaseCamera();
     }
 
-    @SuppressLint("NewApi") // Suppresses Camera#setPreviewTexture
-    void setUpPreview() {
+    @SuppressLint("NewApi")
+        // Suppresses Camera#setPreviewTexture
+    private void setUpPreview() {
         try {
             if (mPreview.getOutputClass() == SurfaceHolder.class) {
                 final boolean needsToStopPreview = mShowingPreview && Build.VERSION.SDK_INT < 14;
@@ -126,6 +120,11 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
+    int getFacing() {
+        return mFacing;
+    }
+
+    @Override
     void setFacing(int facing) {
         if (mFacing == facing) {
             return;
@@ -138,13 +137,13 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
-    int getFacing() {
-        return mFacing;
+    Set<AspectRatio> getSupportedAspectRatios() {
+        return mPreviewSizes.ratios();
     }
 
     @Override
-    Set<AspectRatio> getSupportedAspectRatios() {
-        return mPreviewSizes.ratios();
+    AspectRatio getAspectRatio() {
+        return mAspectRatio;
     }
 
     @Override
@@ -164,8 +163,12 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
-    AspectRatio getAspectRatio() {
-        return mAspectRatio;
+    boolean getAutoFocus() {
+        if (!isCameraOpened()) {
+            return mAutoFocus;
+        }
+        String focusMode = mCameraParameters.getFocusMode();
+        return focusMode != null && focusMode.contains("continuous");
     }
 
     @Override
@@ -179,12 +182,8 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
-    boolean getAutoFocus() {
-        if (!isCameraOpened()) {
-            return mAutoFocus;
-        }
-        String focusMode = mCameraParameters.getFocusMode();
-        return focusMode != null && focusMode.contains("continuous");
+    int getFlash() {
+        return mFlash;
     }
 
     @Override
@@ -195,11 +194,6 @@ class Camera1 extends CameraViewImpl {
         if (setFlashInternal(flash)) {
             mCamera.setParameters(mCameraParameters);
         }
-    }
-
-    @Override
-    int getFlash() {
-        return mFlash;
     }
 
     @Override
@@ -220,7 +214,7 @@ class Camera1 extends CameraViewImpl {
         }
     }
 
-    void takePictureInternal() {
+    private void takePictureInternal() {
         mCamera.takePicture(null, null, null, new Camera.PictureCallback() {
             @Override
             public void onPictureTaken(byte[] data, Camera camera) {
@@ -237,17 +231,7 @@ class Camera1 extends CameraViewImpl {
         }
         mDisplayOrientation = displayOrientation;
         if (isCameraOpened()) {
-            int cameraRotation = calcCameraRotation(displayOrientation);
-            mCameraParameters.setRotation(cameraRotation);
-            mCamera.setParameters(mCameraParameters);
-            final boolean needsToStopPreview = mShowingPreview && Build.VERSION.SDK_INT < 14;
-            if (needsToStopPreview) {
-                mCamera.stopPreview();
-            }
-            mCamera.setDisplayOrientation(cameraRotation);
-            if (needsToStopPreview) {
-                mCamera.startPreview();
-            }
+            adjustCameraParameters();
         }
     }
 
@@ -286,7 +270,6 @@ class Camera1 extends CameraViewImpl {
             mAspectRatio = Constants.DEFAULT_ASPECT_RATIO;
         }
         adjustCameraParameters();
-        mCamera.setDisplayOrientation(calcCameraRotation(mDisplayOrientation));
         mCallback.onCameraOpened();
     }
 
@@ -301,7 +284,7 @@ class Camera1 extends CameraViewImpl {
         return r;
     }
 
-    void adjustCameraParameters() {
+    private void adjustCameraParameters() {
         SortedSet<Size> sizes = mPreviewSizes.sizes(mAspectRatio);
         if (sizes == null) { // Not supported
             mAspectRatio = chooseAspectRatio();
@@ -310,55 +293,51 @@ class Camera1 extends CameraViewImpl {
 
         Size suggestedSize = Size.optimalSize(new Size(mPreview.getWidth(), mPreview.getHeight()), sizes);
         Size size = suggestedSize;
-        if(mCallback != null) {
+        if (mCallback != null) {
             size = mCallback.onChoosePreviewSize(mPreviewSizes, suggestedSize, mAspectRatio);
         }
         final Camera.Size currentSize = mCameraParameters.getPictureSize();
         if (currentSize.width != size.getWidth() || currentSize.height != size.getHeight()) {
-            if(mCallback != null) {
+            if (mCallback != null) {
                 // Largest picture size in this ratio
                 final Size pictureSize = mCallback.onChoosePictureSize(mPictureSizes, mAspectRatio);
                 mCameraParameters.setPictureSize(pictureSize.getWidth(), pictureSize.getHeight());
             }
-            if (mShowingPreview) {
-                mCamera.stopPreview();
-            }
+
             mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
-            mCameraParameters.setRotation(calcCameraRotation(mDisplayOrientation));
-            setAutoFocusInternal(mAutoFocus);
-            setFlashInternal(mFlash);
-            mCamera.setParameters(mCameraParameters);
-            if (mShowingPreview) {
-                mCamera.startPreview();
-            }
         }
-    }
 
-    @SuppressWarnings("SuspiciousNameCombination")
-    private Size chooseOptimalSize(SortedSet<Size> sizes) {
-        if (!mPreview.isReady()) { // Not yet laid out
-            return sizes.first(); // Return the smallest size
-        }
-        int desiredWidth;
-        int desiredHeight;
-        final int surfaceWidth = mPreview.getWidth();
-        final int surfaceHeight = mPreview.getHeight();
-        if (mDisplayOrientation == 90 || mDisplayOrientation == 270) {
-            desiredWidth = surfaceHeight;
-            desiredHeight = surfaceWidth;
+        int cameraRotation = calcCameraRotation(mDisplayOrientation);
+        if ((mDisplayOrientation % 180) == 0) {
+            mCameraParameters.set("orientation", "portrait");
         } else {
-            desiredWidth = surfaceWidth;
-            desiredHeight = surfaceHeight;
+            mCameraParameters.set("orientation", "landscape");
         }
-        Size result = null;
-        for (Size size : sizes) { // Iterate from small to large
-            if (desiredWidth <= size.getWidth() && desiredHeight <= size.getHeight()) {
-                return size;
 
+        // Special case for front facing camera1 api
+        if (mFacing == CameraView.FACING_FRONT) {
+            int outputRotation = cameraRotation;
+            if (cameraRotation == 90) {
+                outputRotation = 270;
             }
-            result = size;
+
+            mCameraParameters.setRotation(outputRotation);
+        } else {
+            mCameraParameters.setRotation(cameraRotation);
         }
-        return result;
+
+        mCamera.setDisplayOrientation(cameraRotation);
+        setAutoFocusInternal(mAutoFocus);
+        setFlashInternal(mFlash);
+
+        final boolean needsToStopPreview = mShowingPreview && Build.VERSION.SDK_INT < 14;
+        if (needsToStopPreview) {
+            mCamera.stopPreview();
+        }
+        mCamera.setParameters(mCameraParameters);
+        if (needsToStopPreview) {
+            mCamera.startPreview();
+        }
     }
 
     private void releaseCamera() {
@@ -384,7 +363,7 @@ class Camera1 extends CameraViewImpl {
         mAutoFocus = autoFocus;
         if (isCameraOpened()) {
             final List<String> modes = mCameraParameters.getSupportedFocusModes();
-            if (autoFocus && modes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
+            if (autoFocus && modes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE) && Build.VERSION.SDK_INT >= 14) {
                 mCameraParameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
             } else if (modes.contains(Camera.Parameters.FOCUS_MODE_FIXED)) {
                 mCameraParameters.setFocusMode(Camera.Parameters.FOCUS_MODE_FIXED);
@@ -406,7 +385,7 @@ class Camera1 extends CameraViewImpl {
         if (isCameraOpened()) {
             List<String> modes = mCameraParameters.getSupportedFlashModes();
             String mode = FLASH_MODES.get(flash);
-            if (modes!= null && modes.contains(mode)) {
+            if (modes != null && modes.contains(mode)) {
                 mCameraParameters.setFlashMode(mode);
                 mFlash = flash;
                 return true;
@@ -423,5 +402,4 @@ class Camera1 extends CameraViewImpl {
             return false;
         }
     }
-
 }
