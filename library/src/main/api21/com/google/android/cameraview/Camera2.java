@@ -24,7 +24,6 @@ import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
-import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
@@ -32,7 +31,6 @@ import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
 import android.os.Build;
-import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.util.SparseIntArray;
@@ -125,16 +123,25 @@ class Camera2 extends CameraViewImpl {
         }
 
         @Override
-        public void lockAutoFocus() {
+        public void onLockFocus() {
+            Log.d(TAG, "Trigger AF lock start");
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_START);
             try {
-                // This is how to tell the camera to lock focus.
-                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
-                CaptureRequest captureRequest = mPreviewRequestBuilder.build();
-                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
-                        null); // prevent CONTROL_AF_TRIGGER_START from calling over and over again
-                mCaptureSession.capture(captureRequest, mCaptureCallback, null);
+                mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, null);
             } catch (CameraAccessException e) {
-                e.printStackTrace();
+                Log.e(TAG, "Failed to lock focus.", e);
+            }
+        }
+
+        @Override
+        public void onUnlockFocus() {
+            Log.d(TAG, "Trigger AF lock cancel");
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_CANCEL);
+            try {
+                mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, null);
+                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_IDLE);
+            } catch (CameraAccessException e) {
+                Log.e(TAG, "Failed to unlock focus.", e);
             }
         }
 
@@ -307,7 +314,7 @@ class Camera2 extends CameraViewImpl {
     @Override
     void takePicture() {
         if (mAutoFocus) {
-            lockFocus();
+            lockFocusForCapture();
         } else {
             captureStillPicture();
         }
@@ -527,7 +534,7 @@ class Camera2 extends CameraViewImpl {
     /**
      * Locks the focus as the first step for a still image capture.
      */
-    private void lockFocus() {
+    private void lockFocusForCapture() {
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_START);
         try {
             mCaptureCallback.setState(PictureCaptureCallback.STATE_LOCKING);
@@ -619,19 +626,13 @@ class Camera2 extends CameraViewImpl {
         static final int STATE_WAITING = 4;
         static final int STATE_CAPTURING = 5;
 
-        private static final long LOCK_FOCUS_DELAY_ON_FOCUSED = 5000;
-        private static final long LOCK_FOCUS_DELAY_ON_UNFOCUSED = 1000;
+        private static final long LOCK_FOCUS_DELAY_LONG = 10000;    /* 10 seconds */
+        private static final long LOCK_FOCUS_DELAY_SHORT = 2000;    /* 2 seconds */
 
         private int mState;
         private Integer mLastAfState;
-        private Handler mUiHandler = new Handler(); // UI handler
-        private Runnable mLockAutoFocusRunnable = new Runnable() {
-
-            @Override
-            public void run() {
-                lockAutoFocus();
-            }
-        };
+        private long focusLockTimer = Long.MAX_VALUE;
+        private long focusUnlockTimer = Long.MAX_VALUE;
 
         PictureCaptureCallback() {
         }
@@ -652,44 +653,72 @@ class Camera2 extends CameraViewImpl {
             process(result);
         }
 
-        abstract public void lockAutoFocus();
-
         private void process(@NonNull CaptureResult result) {
             switch (mState) {
                 case STATE_PREVIEW: {
+                    long now = System.currentTimeMillis();
+                    if (focusLockTimer - now < 0) {
+                        focusLockTimer = Long.MAX_VALUE;
+                        onLockFocus();
+                    } else if (focusUnlockTimer - now < 0) {
+                        focusUnlockTimer = Long.MAX_VALUE;
+                        onUnlockFocus();
+                    }
+
+
                     // We have nothing to do when the camera preview is working normally.
                     Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
                     if (afState != null && !afState.equals(mLastAfState)) {
                         switch (afState) {
                             case CaptureResult.CONTROL_AF_STATE_INACTIVE:
                                 Log.d(TAG, "CaptureResult.CONTROL_AF_STATE_INACTIVE");
-                                lockAutoFocus();
+
+                                /**
+                                 * Camera is in unknown state of focus.  Schedule trying to get a focus lock now.
+                                 */
+                                focusLockTimer = now;                                   // Attempt to lock the focus now
+                                focusUnlockTimer = Long.MAX_VALUE;                      // No unlock scheduled
                                 break;
                             case CaptureResult.CONTROL_AF_STATE_ACTIVE_SCAN:
                                 Log.d(TAG, "CaptureResult.CONTROL_AF_STATE_ACTIVE_SCAN");
+
+                                /**
+                                 * The camera is currently scanning to get the best focus it can achieve.
+                                 */
                                 break;
                             case CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED:
                                 Log.d(TAG, "CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED");
-                                mUiHandler.removeCallbacks(mLockAutoFocusRunnable);
-                                mUiHandler.postDelayed(mLockAutoFocusRunnable, LOCK_FOCUS_DELAY_ON_FOCUSED);
+
+                                /**
+                                 * Attempted to focus the camera, and succeeded in getting a lock.  Schedule a long
+                                 * delay before trying to focus again.
+                                 */
+                                focusUnlockTimer = now + LOCK_FOCUS_DELAY_LONG;
+                                focusLockTimer = Long.MAX_VALUE;
                                 break;
                             case CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED:
-                                mUiHandler.removeCallbacks(mLockAutoFocusRunnable);
-                                mUiHandler.postDelayed(mLockAutoFocusRunnable, LOCK_FOCUS_DELAY_ON_UNFOCUSED);
                                 Log.d(TAG, "CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED");
+
+                                /**
+                                 * Attempted to focus the camera, but did no achieve a lock.  The current focus
+                                 * is probably better than not focusing at all.  Schedule a long delay to try to
+                                 * refocus.
+                                 */
+                                focusLockTimer = now + LOCK_FOCUS_DELAY_SHORT;           // Lock focus
+                                focusUnlockTimer = Long.MAX_VALUE;                      // No unlock scheduled
                                 break;
                             case CaptureResult.CONTROL_AF_STATE_PASSIVE_UNFOCUSED:
-                                mUiHandler.removeCallbacks(mLockAutoFocusRunnable);
-                                //mUiHandler.postDelayed(mLockAutoFocusRunnable, LOCK_FOCUS_DELAY_ON_UNFOCUSED);
                                 Log.d(TAG, "CaptureResult.CONTROL_AF_STATE_PASSIVE_UNFOCUSED");
+                                focusLockTimer = Long.MAX_VALUE;                        // Nothing scheduled
+                                focusUnlockTimer = Long.MAX_VALUE;
                                 break;
                             case CaptureResult.CONTROL_AF_STATE_PASSIVE_SCAN:
                                 Log.d(TAG, "CaptureResult.CONTROL_AF_STATE_PASSIVE_SCAN");
                                 break;
                             case CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED:
-                                mUiHandler.removeCallbacks(mLockAutoFocusRunnable);
-                                //mUiHandler.postDelayed(mLockAutoFocusRunnable, LOCK_FOCUS_DELAY_ON_FOCUSED);
                                 Log.d(TAG, "CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED");
+                                focusLockTimer = Long.MAX_VALUE;                        // Nothing scheduled
+                                focusUnlockTimer = Long.MAX_VALUE;
                                 break;
                         }
                     }
@@ -742,5 +771,8 @@ class Camera2 extends CameraViewImpl {
          * Called when it is necessary to run the precapture sequence.
          */
         public abstract void onPrecaptureRequired();
+
+        public abstract void onLockFocus();
+        public abstract void onUnlockFocus();
     }
 }
