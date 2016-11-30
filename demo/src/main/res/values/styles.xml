@@ -23,4 +23,8 @@
         <item name="android:textColorSecondary">@color/secondaryText</item>
     </style>
 
+    <style name="Theme.Demo.FullScreenTheme">
+        <item name="android:windowFullscreen">true</item>
+    </style>
+
 </resources>

@@ -76,6 +76,8 @@ public class MainActivity extends AppCompatActivity implements
             R.string.flash_on,
     };
 
+    private int requestPermissionCount = 0;
+
     private int mCurrentFlash;
 
     private CameraView mCameraView;
@@ -118,20 +120,45 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onResume() {
         super.onResume();
+//        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+//                == PackageManager.PERMISSION_GRANTED) {
+//            mCameraView.start();
+//        } else if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+//                Manifest.permission.CAMERA)) {
+//            ConfirmationDialogFragment
+//                    .newInstance(R.string.camera_permission_confirmation,
+//                            new String[]{Manifest.permission.CAMERA},
+//                            REQUEST_CAMERA_PERMISSION,
+//                            R.string.camera_permission_not_granted)
+//                    .show(getSupportFragmentManager(), FRAGMENT_DIALOG);
+//        } else {
+//            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA},
+//                    REQUEST_CAMERA_PERMISSION);
+//        }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED) {
             mCameraView.start();
-        } else if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                Manifest.permission.CAMERA)) {
-            ConfirmationDialogFragment
-                    .newInstance(R.string.camera_permission_confirmation,
-                            new String[]{Manifest.permission.CAMERA},
-                            REQUEST_CAMERA_PERMISSION,
-                            R.string.camera_permission_not_granted)
-                    .show(getSupportFragmentManager(), FRAGMENT_DIALOG);
-        } else {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA},
-                    REQUEST_CAMERA_PERMISSION);
+            return;
+        }
+        switch (requestPermissionCount) {
+            case 0:
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA},
+                        REQUEST_CAMERA_PERMISSION);
+                requestPermissionCount++;
+                break;
+            case 1:
+                ConfirmationDialogFragment
+                        .newInstance(R.string.camera_permission_confirmation,
+                                new String[]{Manifest.permission.CAMERA},
+                                REQUEST_CAMERA_PERMISSION,
+                                R.string.camera_permission_not_granted)
+                        .show(getSupportFragmentManager(), FRAGMENT_DIALOG);
+                requestPermissionCount++;
+                break;
+            case 2:
+                Toast.makeText(this, "去设置里打开权限吧", Toast.LENGTH_SHORT).show();
+                finish();
+                break;
         }
     }
 
@@ -232,7 +259,7 @@ public class MainActivity extends AppCompatActivity implements
                     // This demo app saves the taken picture to a constant file.
                     // $ adb pull /sdcard/Android/data/com.google.android.cameraview.demo/files/Pictures/picture.jpg
                     File file = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES),
-                            "picture.jpg");
+                            System.currentTimeMillis() + ".jpg");
                     OutputStream os = null;
                     try {
                         os = new FileOutputStream(file);

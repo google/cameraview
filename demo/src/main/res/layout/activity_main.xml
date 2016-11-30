@@ -11,11 +11,11 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 -->
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     tools:context=".MainActivity">
 
@@ -24,10 +24,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
-    <include
-        layout="@layout/include_control"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"/>
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/take_picture"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="@dimen/activity_horizontal_margin"
+        app:srcCompat="@drawable/ic_camera"/>
 
-</LinearLayout>
+</RelativeLayout>
