@@ -16,11 +16,9 @@
 
 package com.google.android.cameraview;
 
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
-import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
 import android.os.Build;
 import android.os.Parcel;
@@ -101,8 +99,8 @@ public class CameraView extends FrameLayout {
         mCallbacks = new CallbackBridge();
 
         final CameraManager cameraManager = (CameraManager) getContext().getSystemService(Context.CAMERA_SERVICE);
-        final CameraSettings cameraSettings = new CameraSettings();
-        if(cameraSettings.shouldUseCamera2(cameraManager)) {
+        final CameraSupport cameraSettings = new CameraSupport();
+        if(cameraSettings.supportCamera2(cameraManager)) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
                 mImpl = new Camera2(mCallbacks, preview, context);
             } else {
