@@ -100,7 +100,7 @@ public class CameraView extends FrameLayout {
         }
         mCallbacks = new CallbackBridge();
 
-        if(new CameraSettings().shouldUseCamera2(getContext())) {
+        if(new CameraSettings().shouldUseCamera2((CameraManager) getContext().getSystemService(Context.CAMERA_SERVICE))) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
                 mImpl = new Camera2(mCallbacks, preview, context);
             } else {

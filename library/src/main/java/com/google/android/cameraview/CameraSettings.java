@@ -10,12 +10,11 @@ import android.support.annotation.NonNull;
 public class CameraSettings {
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    public boolean shouldUseCamera2(@NonNull final Context context) {
+    public boolean shouldUseCamera2(@NonNull final CameraManager manager) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP || isProblematicDeviceOnNewCameraApi()) {
             return false;
         }
         try {
-            CameraManager manager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
             String[] idList = manager.getCameraIdList();
             boolean hasSupport = true;
             if (idList.length == 0) {
