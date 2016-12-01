@@ -6,10 +6,10 @@ import android.hardware.camera2.CameraManager;
 import android.os.Build;
 import android.support.annotation.NonNull;
 
-public class CameraSettings {
+public class CameraSupport {
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    public boolean shouldUseCamera2(@NonNull final CameraManager manager) {
+    public boolean supportCamera2(@NonNull final CameraManager manager) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP || isProblematicDeviceOnCamera2()) {
             return false;
         }
