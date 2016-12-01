@@ -1,7 +1,6 @@
 package com.google.android.cameraview;
 
 import android.annotation.TargetApi;
-import android.content.Context;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
 import android.os.Build;
@@ -11,7 +10,7 @@ public class CameraSettings {
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public boolean shouldUseCamera2(@NonNull final CameraManager manager) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP || isProblematicDeviceOnNewCameraApi()) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP || isProblematicDeviceOnCamera2()) {
             return false;
         }
         try {
@@ -41,7 +40,7 @@ public class CameraSettings {
         }
     }
 
-    private boolean isProblematicDeviceOnNewCameraApi() {
+    private boolean isProblematicDeviceOnCamera2() {
         if ("Huawei".equals(Build.MANUFACTURER) &&
                 "angler".equals(Build.PRODUCT)) {
             return true;
