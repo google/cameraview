@@ -683,7 +683,8 @@ class Camera2 extends CameraViewImpl {
                 case STATE_PRECAPTURE: {
                     Integer ae = result.get(CaptureResult.CONTROL_AE_STATE);
                     if (ae == null || ae == CaptureResult.CONTROL_AE_STATE_PRECAPTURE ||
-                            ae == CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED) {
+                            ae == CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED ||
+                            ae == CaptureResult.CONTROL_AE_STATE_CONVERGED) {
                         setState(STATE_WAITING);
                     }
                     break;
