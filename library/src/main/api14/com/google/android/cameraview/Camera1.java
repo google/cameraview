@@ -81,7 +81,7 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
-    void start() {
+    boolean start() {
         chooseCamera();
         openCamera();
         if (mPreview.isReady()) {
@@ -89,6 +89,7 @@ class Camera1 extends CameraViewImpl {
         }
         mShowingPreview = true;
         mCamera.startPreview();
+        return true;
     }
 
     @Override
