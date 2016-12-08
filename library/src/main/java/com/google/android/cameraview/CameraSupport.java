@@ -5,15 +5,17 @@ import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
 import android.os.Build;
 import android.support.annotation.NonNull;
+import android.content.Context;
 
 public class CameraSupport {
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    public boolean supportCamera2(@NonNull final CameraManager manager) {
+    public boolean supportCamera2(@NonNull final Context context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP || isProblematicDeviceOnCamera2()) {
             return false;
         }
         try {
+            final CameraManager manager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
             String[] idList = manager.getCameraIdList();
             boolean hasSupport = true;
             if (idList.length == 0) {
@@ -41,6 +43,9 @@ public class CameraSupport {
     }
 
     private boolean isProblematicDeviceOnCamera2() {
+        if (Build.MANUFACTURER == null || Build.PRODUCT == null) {
+            return true;
+        }
         if ("Huawei".equals(Build.MANUFACTURER) &&
                 "angler".equals(Build.PRODUCT)) {
             return true;
