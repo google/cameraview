@@ -77,6 +77,8 @@ public class CameraView extends FrameLayout {
 
     private final DisplayOrientationDetector mDisplayOrientationDetector;
 
+    private boolean mComputeImageAngle;
+
     public CameraView(Context context) {
         this(context, null);
     }
@@ -207,6 +209,7 @@ public class CameraView extends FrameLayout {
         state.ratio = getAspectRatio();
         state.autoFocus = getAutoFocus();
         state.flash = getFlash();
+        state.computeAngle = isComputeImageAngle();
         return state;
     }
 
@@ -222,6 +225,7 @@ public class CameraView extends FrameLayout {
         setAspectRatio(ss.ratio);
         setAutoFocus(ss.autoFocus);
         setFlash(ss.flash);
+        setComputeImageAngle(ss.computeAngle);
     }
 
     /**
@@ -381,6 +385,24 @@ public class CameraView extends FrameLayout {
     }
 
     /**
+     * Gets the current angle computing option
+     *
+     * @return current angle computing state
+     */
+    public boolean isComputeImageAngle() {
+        return mComputeImageAngle;
+    }
+
+    /**
+     * Sets the current angle computing option
+     *
+     * @param computeImageAngle angle computing options
+     */
+    public void setComputeImageAngle(boolean computeImageAngle) {
+        this.mComputeImageAngle = computeImageAngle;
+    }
+
+    /**
      * Take a picture. The result will be returned to
      * {@link Callback#onPictureTaken(CameraView, byte[])}.
      */
@@ -426,7 +448,11 @@ public class CameraView extends FrameLayout {
         @Override
         public void onPictureTaken(byte[] data) {
             for (Callback callback : mCallbacks) {
-                callback.onPictureTaken(CameraView.this, data);
+                if (isComputeImageAngle()) {
+                    callback.onPictureTaken(CameraView.this, data, ExifUtil.getOrientation(data));
+                } else {
+                    callback.onPictureTaken(CameraView.this, data);
+                }
             }
         }
 
@@ -447,6 +473,8 @@ public class CameraView extends FrameLayout {
         @Flash
         int flash;
 
+        boolean computeAngle;
+
         @SuppressWarnings("WrongConstant")
         public SavedState(Parcel source, ClassLoader loader) {
             super(source);
@@ -454,6 +482,7 @@ public class CameraView extends FrameLayout {
             ratio = source.readParcelable(loader);
             autoFocus = source.readByte() != 0;
             flash = source.readInt();
+            computeAngle = source.readByte() != 0;
         }
 
         public SavedState(Parcelable superState) {
@@ -467,6 +496,7 @@ public class CameraView extends FrameLayout {
             out.writeParcelable(ratio, 0);
             out.writeByte((byte) (autoFocus ? 1 : 0));
             out.writeInt(flash);
+            out.writeByte((byte) (autoFocus ? 1 : 0));
         }
 
         public static final Parcelable.Creator<SavedState> CREATOR
@@ -515,6 +545,15 @@ public class CameraView extends FrameLayout {
          * @param data       JPEG data.
          */
         public void onPictureTaken(CameraView cameraView, byte[] data) {
+        }
+
+        /**
+         * Called when a picture is taken and image angle is needed
+         *
+         * @param cameraView The associated {@link CameraView}.
+         * @param data       JPEG data.
+         */
+        public void onPictureTaken(CameraView cameraView, byte[] data, int angle) {
         }
     }
 

@@ -199,6 +199,12 @@ public class MainActivity extends AppCompatActivity implements
                             CameraView.FACING_BACK : CameraView.FACING_FRONT);
                 }
                 break;
+            case R.id.switch_with_angle:
+                if (mCameraView != null) {
+                    mCameraView.setComputeImageAngle(!mCameraView.isComputeImageAngle());
+                    Toast.makeText(this, String.format(getString(R.string.rotation_option_click), mCameraView.isComputeImageAngle()), Toast.LENGTH_SHORT).show();
+                }
+                break;
         }
         return false;
     }
@@ -255,6 +261,43 @@ public class MainActivity extends AppCompatActivity implements
             });
         }
 
+        @Override
+        public void onPictureTaken(CameraView cameraView, final byte[] data, int angle) {
+            Log.d(TAG, "onPictureTaken " + data.length + " angle " + angle);
+            Toast.makeText(cameraView.getContext(), String.format(getString(R.string.picture_taken_rotating), String.valueOf(angle)), Toast.LENGTH_SHORT)
+                    .show();
+
+            new RotateImageTask(new CompressImageCallback() {
+                @Override
+                public void onImageCompressed(final byte[] image) {
+                    getBackgroundHandler().post(new Runnable() {
+                        @Override
+                        public void run() {
+                            // This demo app saves the taken picture to a constant file.
+                            // $ adb pull /sdcard/Android/data/com.google.android.cameraview.demo/files/Pictures/picture.jpg
+                            File file = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES),
+                                    "picture.jpg");
+                            OutputStream os = null;
+                            try {
+                                os = new FileOutputStream(file);
+                                os.write(image);
+                                os.close();
+                            } catch (IOException e) {
+                                Log.w(TAG, "Cannot write to " + file, e);
+                            } finally {
+                                if (os != null) {
+                                    try {
+                                        os.close();
+                                    } catch (IOException e) {
+                                        // Ignore
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }, angle).execute(data);
+        }
     };
 
     public static class ConfirmationDialogFragment extends DialogFragment {
