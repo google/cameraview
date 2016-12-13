@@ -41,12 +41,14 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
+import com.google.android.cameraview.AspectRatio;
 import com.google.android.cameraview.CameraView;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Set;
 
 
 /**
@@ -54,7 +56,8 @@ import java.io.OutputStream;
  * $ adb pull /sdcard/Android/data/com.google.android.cameraview.demo/files/Pictures/picture.jpg
  */
 public class MainActivity extends AppCompatActivity implements
-        ActivityCompat.OnRequestPermissionsResultCallback {
+        ActivityCompat.OnRequestPermissionsResultCallback,
+        AspectRatioFragment.Listener {
 
     private static final String TAG = "MainActivity";
 
@@ -184,6 +187,14 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
+            case R.id.aspect_ratio:
+                if (mCameraView != null) {
+                    final Set<AspectRatio> ratios = mCameraView.getSupportedAspectRatios();
+                    final AspectRatio currentRatio = mCameraView.getAspectRatio();
+                    AspectRatioFragment.newInstance(ratios, currentRatio)
+                            .show(getSupportFragmentManager(), FRAGMENT_DIALOG);
+                }
+                break;
             case R.id.switch_flash:
                 if (mCameraView != null) {
                     mCurrentFlash = (mCurrentFlash + 1) % FLASH_OPTIONS.length;
@@ -201,6 +212,14 @@ public class MainActivity extends AppCompatActivity implements
                 break;
         }
         return false;
+    }
+
+    @Override
+    public void onAspectRatioSelected(@NonNull AspectRatio ratio) {
+        if (mCameraView != null) {
+            Toast.makeText(this, ratio.toString(), Toast.LENGTH_SHORT).show();
+            mCameraView.setAspectRatio(ratio);
+        }
     }
 
     private Handler getBackgroundHandler() {

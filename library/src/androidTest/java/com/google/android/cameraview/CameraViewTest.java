@@ -25,6 +25,8 @@ import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static android.support.test.espresso.matcher.ViewMatchers.withId;
 
 import static com.google.android.cameraview.AspectRatioIsCloseTo.closeToOrInverse;
+import static com.google.android.cameraview.CameraViewActions.setAspectRatio;
+import static com.google.android.cameraview.CameraViewMatchers.hasAspectRatio;
 
 import static junit.framework.Assert.assertFalse;
 
@@ -110,31 +112,13 @@ public class CameraViewTest {
 
     @Test
     public void testAspectRatio() {
-        onView(withId(R.id.camera))
-                .check(new ViewAssertion() {
-                    @Override
-                    public void check(View view, NoMatchingViewException noViewFoundException) {
-                        CameraView cameraView = (CameraView) view;
-                        AspectRatio ratio = cameraView.getAspectRatio();
-                        assertThat(ratio, is(notNullValue()));
-                        Set<AspectRatio> ratios = cameraView.getSupportedAspectRatios();
-                        assertThat(ratios.size(), is(greaterThanOrEqualTo(1)));
-                        assertThat(ratios, hasItem(ratio));
-                        if (ratios.size() == 1) {
-                            return;
-                        }
-                        // Pick one ratio to change to
-                        for (AspectRatio r : ratios) {
-                            if (!r.equals(ratio)) {
-                                ratio = r;
-                                break;
-                            }
-                        }
-                        assert ratio != null;
-                        cameraView.setAspectRatio(ratio);
-                        assertThat(cameraView.getAspectRatio(), is(equalTo(ratio)));
-                    }
-                });
+        final CameraView cameraView = (CameraView) rule.getActivity().findViewById(R.id.camera);
+        final Set<AspectRatio> ratios = cameraView.getSupportedAspectRatios();
+        for (AspectRatio ratio : ratios) {
+            onView(withId(R.id.camera))
+                    .perform(setAspectRatio(ratio))
+                    .check(matches(hasAspectRatio(ratio)));
+        }
     }
 
     @Test
