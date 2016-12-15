@@ -150,10 +150,11 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
-    void setAspectRatio(AspectRatio ratio) {
+    boolean setAspectRatio(AspectRatio ratio) {
         if (mAspectRatio == null || !isCameraOpened()) {
             // Handle this later when camera is opened
             mAspectRatio = ratio;
+            return true;
         } else if (!mAspectRatio.equals(ratio)) {
             final Set<Size> sizes = mPreviewSizes.sizes(ratio);
             if (sizes == null) {
@@ -161,8 +162,10 @@ class Camera1 extends CameraViewImpl {
             } else {
                 mAspectRatio = ratio;
                 adjustCameraParameters();
+                return true;
             }
         }
+        return false;
     }
 
     @Override

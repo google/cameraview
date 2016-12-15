@@ -326,7 +326,9 @@ public class CameraView extends FrameLayout {
      * @param ratio The {@link AspectRatio} to be set.
      */
     public void setAspectRatio(@NonNull AspectRatio ratio) {
-        mImpl.setAspectRatio(ratio);
+        if (mImpl.setAspectRatio(ratio)) {
+            requestLayout();
+        }
     }
 
     /**

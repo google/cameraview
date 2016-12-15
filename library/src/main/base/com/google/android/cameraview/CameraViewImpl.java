@@ -50,7 +50,10 @@ abstract class CameraViewImpl {
 
     abstract Set<AspectRatio> getSupportedAspectRatios();
 
-    abstract void setAspectRatio(AspectRatio ratio);
+    /**
+     * @return {@code true} if the aspect ratio was changed.
+     */
+    abstract boolean setAspectRatio(AspectRatio ratio);
 
     abstract AspectRatio getAspectRatio();
 
