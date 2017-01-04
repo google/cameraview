@@ -77,6 +77,10 @@ class Camera1 extends CameraViewImpl {
     void start() {
         chooseCamera();
         openCamera();
+        if(mCamera == null) {
+            return;
+        }
+
         if (mPreview.isReady()) {
             setUpPreview();
         }
@@ -253,6 +257,13 @@ class Camera1 extends CameraViewImpl {
         if (mCamera != null) {
             releaseCamera();
         }
+
+        mCamera = null;
+        if(mCameraId == INVALID_CAMERA_ID) {
+            mCallback.onCameraNotAvailable();
+            return;
+        }
+
         mCamera = Camera.open(mCameraId);
         mCameraParameters = mCamera.getParameters();
         // Supported preview sizes

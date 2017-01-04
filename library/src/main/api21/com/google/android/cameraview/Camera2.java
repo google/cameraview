@@ -110,6 +110,16 @@ class Camera2 extends CameraViewImpl {
 
         @Override
         public void onPrecaptureRequired() {
+            if(mCaptureSession == null) {
+                Log.e(TAG, "CaptureSession is null");
+                return;
+            }
+
+            if(mPreviewRequestBuilder == null) {
+                Log.e(TAG, "PreviewRequestBuilder is null");
+                return;
+            }
+
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
                     CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
             setState(STATE_PRECAPTURE);
@@ -125,6 +135,16 @@ class Camera2 extends CameraViewImpl {
         @Override
         public void onLockFocus() {
             Log.d(TAG, "Trigger AF lock start");
+            if(mCaptureSession == null) {
+                Log.e(TAG, "CaptureSession is null");
+                return;
+            }
+
+            if(mPreviewRequestBuilder == null) {
+                Log.e(TAG, "PreviewRequestBuilder is null");
+                return;
+            }
+
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_START);
             try {
                 mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, null);
@@ -136,6 +156,16 @@ class Camera2 extends CameraViewImpl {
         @Override
         public void onUnlockFocus() {
             Log.d(TAG, "Trigger AF lock cancel");
+            if(mCaptureSession == null) {
+                Log.e(TAG, "CaptureSession is null");
+                return;
+            }
+
+            if(mPreviewRequestBuilder == null) {
+                Log.e(TAG, "PreviewRequestBuilder is null");
+                return;
+            }
+
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_CANCEL);
             try {
                 mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, null);
@@ -335,6 +365,14 @@ class Camera2 extends CameraViewImpl {
         try {
             int internalFacing = INTERNAL_FACINGS.get(mFacing);
             final String[] ids = mCameraManager.getCameraIdList();
+
+            if (ids.length == 0) {
+                mCameraId = null;
+                Log.e(TAG, "No camera devices present.");
+                mCallback.onCameraNotAvailable();
+                return;
+            }
+
             for (String id : ids) {
                 CameraCharacteristics characteristics = mCameraManager.getCameraCharacteristics(id);
                 Integer internal = characteristics.get(CameraCharacteristics.LENS_FACING);
@@ -374,6 +412,10 @@ class Camera2 extends CameraViewImpl {
      * {@link #mAspectRatio}.</p>
      */
     private void collectCameraInfo() {
+        if (mCameraCharacteristics == null) {
+            return;
+        }
+
         StreamConfigurationMap map = mCameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
         if (map == null) {
             throw new IllegalStateException("Failed to get configuration map: " + mCameraId);
@@ -409,6 +451,10 @@ class Camera2 extends CameraViewImpl {
      * <p>The result will be processed in {@link #mCameraDeviceCallback}.</p>
      */
     private void startOpeningCamera() {
+        if (mCameraId == null) {
+            return;
+        }
+
         try {
             mCameraManager.openCamera(mCameraId, mCameraDeviceCallback, null);
         } catch (CameraAccessException e) {
@@ -448,6 +494,16 @@ class Camera2 extends CameraViewImpl {
      * Updates the internal state of auto-focus to {@link #mAutoFocus}.
      */
     void updateAutoFocus() {
+        if(mCameraCharacteristics == null) {
+            Log.e(TAG, "CameraCharacteristics is null");
+            return;
+        }
+
+        if(mPreviewRequestBuilder == null) {
+            Log.e(TAG, "PreviewRequestBuilder is null");
+            return;
+        }
+
         if (mAutoFocus) {
             int[] modes = mCameraCharacteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES);
             // Auto focus is not supported
@@ -504,6 +560,11 @@ class Camera2 extends CameraViewImpl {
      * Updates the internal state of flash to {@link #mFlash}.
      */
     void updateFlash() {
+        if(mPreviewRequestBuilder == null) {
+            Log.e(TAG, "PreviewRequestBuilder is null");
+            return;
+        }
+
         switch (mFlash) {
             case Constants.FLASH_OFF:
                 mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
@@ -535,6 +596,21 @@ class Camera2 extends CameraViewImpl {
      * Locks the focus as the first step for a still image capture.
      */
     private void lockFocusForCapture() {
+        if(mPreviewRequestBuilder == null) {
+            Log.e(TAG, "PreviewRequestBuilder is null");
+            return;
+        }
+
+        if(mCaptureCallback == null) {
+            Log.e(TAG, "CaptureCallback is null");
+            return;
+        }
+
+        if(mCaptureSession == null) {
+            Log.e(TAG, "CaptureSession is null");
+            return;
+        }
+
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_START);
         try {
             mCaptureCallback.setState(PictureCaptureCallback.STATE_LOCKING);
@@ -548,6 +624,26 @@ class Camera2 extends CameraViewImpl {
      * Captures a still picture.
      */
     void captureStillPicture() {
+        if(mCamera == null) {
+            Log.e(TAG, "Camera is null");
+            return;
+        }
+
+        if(mPreviewRequestBuilder == null) {
+            Log.e(TAG, "PreviewRequestBuilder is null");
+            return;
+        }
+
+        if(mCameraCharacteristics == null) {
+            Log.e(TAG, "CameraCharacteristics is null");
+            return;
+        }
+
+        if(mCaptureSession == null) {
+            Log.e(TAG, "CaptureSession is null");
+            return;
+        }
+
         try {
             CaptureRequest.Builder captureRequestBuilder =
                     mCamera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
@@ -588,7 +684,7 @@ class Camera2 extends CameraViewImpl {
                 @Override
                 public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request,
                         @NonNull TotalCaptureResult result) {
-                    unlockFocus();
+                    unlockFocus(session);
                 }
             }, null);
         } catch (CameraAccessException e) {
@@ -600,16 +696,31 @@ class Camera2 extends CameraViewImpl {
      * Unlocks the auto-focus and restart camera preview. This is supposed to be called after
      * capturing a still picture.
      */
-    void unlockFocus() {
+    void unlockFocus(CameraCaptureSession session) {
+        if(session == null) {
+            Log.e(TAG, "Session is null");
+            return;
+        }
+
+        if(mPreviewRequestBuilder == null) {
+            Log.e(TAG, "PreviewRequestBuilder is null");
+            return;
+        }
+
+        if(mCaptureCallback == null) {
+            Log.e(TAG, "CaptureCallback is null");
+            return;
+        }
+
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_CANCEL);
         try {
-            mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, null);
+            session.capture(mPreviewRequestBuilder.build(), mCaptureCallback, null);
             updateAutoFocus();
             updateFlash();
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_IDLE);
-            mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(), mCaptureCallback, null);
+            session.setRepeatingRequest(mPreviewRequestBuilder.build(), mCaptureCallback, null);
             mCaptureCallback.setState(PictureCaptureCallback.STATE_PREVIEW);
-        } catch (CameraAccessException e) {
+        } catch (CameraAccessException|IllegalStateException e) {
             Log.e(TAG, "Failed to restart camera preview.", e);
         }
     }
@@ -664,7 +775,6 @@ class Camera2 extends CameraViewImpl {
                         focusUnlockTimer = Long.MAX_VALUE;
                         onUnlockFocus();
                     }
-
 
                     // We have nothing to do when the camera preview is working normally.
                     Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
@@ -773,6 +883,7 @@ class Camera2 extends CameraViewImpl {
         public abstract void onPrecaptureRequired();
 
         public abstract void onLockFocus();
+
         public abstract void onUnlockFocus();
     }
 }
