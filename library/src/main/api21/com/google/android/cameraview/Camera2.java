@@ -457,7 +457,7 @@ class Camera2 extends CameraViewImpl {
 
         try {
             mCameraManager.openCamera(mCameraId, mCameraDeviceCallback, null);
-        } catch (CameraAccessException e) {
+        } catch (SecurityException|CameraAccessException e) {
             throw new RuntimeException("Failed to open camera: " + mCameraId, e);
         }
     }
