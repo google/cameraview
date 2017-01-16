@@ -16,12 +16,12 @@
 
 package com.google.android.cameraview;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+
 import org.junit.Test;
 
 import java.util.HashSet;
-
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
 
 public class AspectRatioTest {
 

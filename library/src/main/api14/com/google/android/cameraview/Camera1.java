@@ -16,10 +16,12 @@
 
 package com.google.android.cameraview;
 
+import android.annotation.SuppressLint;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
+import android.os.Build;
 import android.support.v4.util.SparseArrayCompat;
-import android.view.TextureView;
+import android.view.SurfaceHolder;
 
 import java.io.IOException;
 import java.util.List;
@@ -43,13 +45,11 @@ class Camera1 extends CameraViewImpl {
 
     private int mCameraId;
 
-    private Camera mCamera;
+    Camera mCamera;
 
     private Camera.Parameters mCameraParameters;
 
     private final Camera.CameraInfo mCameraInfo = new Camera.CameraInfo();
-
-    private final SurfaceInfo mSurfaceInfo = new SurfaceInfo();
 
     private final SizeMap mPreviewSizes = new SizeMap();
 
@@ -67,56 +67,29 @@ class Camera1 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
-    private final TextureView.SurfaceTextureListener mSurfaceTextureListener
-            = new TextureView.SurfaceTextureListener() {
-
-        private void reconfigurePreview(SurfaceTexture surface, int width, int height) {
-            mSurfaceInfo.configure(surface, width, height);
-            if (mCamera != null) {
-                setUpPreview();
-                adjustCameraParameters();
+    Camera1(Callback callback, PreviewImpl preview) {
+        super(callback, preview);
+        preview.setCallback(new PreviewImpl.Callback() {
+            @Override
+            public void onSurfaceChanged() {
+                if (mCamera != null) {
+                    setUpPreview();
+                    adjustCameraParameters();
+                }
             }
-        }
-
-        @Override
-        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            reconfigurePreview(surface, width, height);
-        }
-
-        @Override
-        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-            reconfigurePreview(surface, width, height);
-        }
-
-        @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-            releaseCamera(); // Safe guard
-            return true;
-        }
-
-        @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-        }
-    };
-
-    public Camera1(Callback callback) {
-        super(callback);
+        });
     }
 
     @Override
-    TextureView.SurfaceTextureListener getSurfaceTextureListener() {
-        return mSurfaceTextureListener;
-    }
-
-    @Override
-    void start() {
+    boolean start() {
         chooseCamera();
         openCamera();
-        if (mSurfaceInfo.surface != null) {
+        if (mPreview.isReady()) {
             setUpPreview();
         }
         mShowingPreview = true;
         mCamera.startPreview();
+        return true;
     }
 
     @Override
@@ -128,9 +101,22 @@ class Camera1 extends CameraViewImpl {
         releaseCamera();
     }
 
-    private void setUpPreview() {
+    // Suppresses Camera#setPreviewTexture
+    @SuppressLint("NewApi")
+    void setUpPreview() {
         try {
-            mCamera.setPreviewTexture(mSurfaceInfo.surface);
+            if (mPreview.getOutputClass() == SurfaceHolder.class) {
+                final boolean needsToStopPreview = mShowingPreview && Build.VERSION.SDK_INT < 14;
+                if (needsToStopPreview) {
+                    mCamera.stopPreview();
+                }
+                mCamera.setPreviewDisplay(mPreview.getSurfaceHolder());
+                if (needsToStopPreview) {
+                    mCamera.startPreview();
+                }
+            } else {
+                mCamera.setPreviewTexture((SurfaceTexture) mPreview.getSurfaceTexture());
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -164,10 +150,11 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
-    void setAspectRatio(AspectRatio ratio) {
+    boolean setAspectRatio(AspectRatio ratio) {
         if (mAspectRatio == null || !isCameraOpened()) {
             // Handle this later when camera is opened
             mAspectRatio = ratio;
+            return true;
         } else if (!mAspectRatio.equals(ratio)) {
             final Set<Size> sizes = mPreviewSizes.sizes(ratio);
             if (sizes == null) {
@@ -175,8 +162,10 @@ class Camera1 extends CameraViewImpl {
             } else {
                 mAspectRatio = ratio;
                 adjustCameraParameters();
+                return true;
             }
         }
+        return false;
     }
 
     @Override
@@ -221,7 +210,8 @@ class Camera1 extends CameraViewImpl {
     @Override
     void takePicture() {
         if (!isCameraOpened()) {
-            throw new IllegalStateException("Camera is not ready. Call start() before takePicture().");
+            throw new IllegalStateException(
+                    "Camera is not ready. Call start() before takePicture().");
         }
         if (getAutoFocus()) {
             mCamera.cancelAutoFocus();
@@ -236,7 +226,7 @@ class Camera1 extends CameraViewImpl {
         }
     }
 
-    private void takePictureInternal() {
+    void takePictureInternal() {
         mCamera.takePicture(null, null, null, new Camera.PictureCallback() {
             @Override
             public void onPictureTaken(byte[] data, Camera camera) {
@@ -248,12 +238,22 @@ class Camera1 extends CameraViewImpl {
 
     @Override
     void setDisplayOrientation(int displayOrientation) {
+        if (mDisplayOrientation == displayOrientation) {
+            return;
+        }
         mDisplayOrientation = displayOrientation;
         if (isCameraOpened()) {
             int cameraRotation = calcCameraRotation(displayOrientation);
             mCameraParameters.setRotation(cameraRotation);
             mCamera.setParameters(mCameraParameters);
+            final boolean needsToStopPreview = mShowingPreview && Build.VERSION.SDK_INT < 14;
+            if (needsToStopPreview) {
+                mCamera.stopPreview();
+            }
             mCamera.setDisplayOrientation(cameraRotation);
+            if (needsToStopPreview) {
+                mCamera.startPreview();
+            }
         }
     }
 
@@ -307,10 +307,11 @@ class Camera1 extends CameraViewImpl {
         return r;
     }
 
-    private void adjustCameraParameters() {
-        final SortedSet<Size> sizes = mPreviewSizes.sizes(mAspectRatio);
+    void adjustCameraParameters() {
+        SortedSet<Size> sizes = mPreviewSizes.sizes(mAspectRatio);
         if (sizes == null) { // Not supported
             mAspectRatio = chooseAspectRatio();
+            sizes = mPreviewSizes.sizes(mAspectRatio);
         }
         Size size = chooseOptimalSize(sizes);
         final Camera.Size currentSize = mCameraParameters.getPictureSize();
@@ -334,17 +335,19 @@ class Camera1 extends CameraViewImpl {
 
     @SuppressWarnings("SuspiciousNameCombination")
     private Size chooseOptimalSize(SortedSet<Size> sizes) {
-        if (mSurfaceInfo.width == 0 || mSurfaceInfo.height == 0) { // Not yet laid out
+        if (!mPreview.isReady()) { // Not yet laid out
             return sizes.first(); // Return the smallest size
         }
         int desiredWidth;
         int desiredHeight;
+        final int surfaceWidth = mPreview.getWidth();
+        final int surfaceHeight = mPreview.getHeight();
         if (mDisplayOrientation == 90 || mDisplayOrientation == 270) {
-            desiredWidth = mSurfaceInfo.height;
-            desiredHeight = mSurfaceInfo.width;
+            desiredWidth = surfaceHeight;
+            desiredHeight = surfaceWidth;
         } else {
-            desiredWidth = mSurfaceInfo.width;
-            desiredHeight = mSurfaceInfo.height;
+            desiredWidth = surfaceWidth;
+            desiredHeight = surfaceHeight;
         }
         Size result = null;
         for (Size size : sizes) { // Iterate from small to large
@@ -402,7 +405,7 @@ class Camera1 extends CameraViewImpl {
         if (isCameraOpened()) {
             List<String> modes = mCameraParameters.getSupportedFlashModes();
             String mode = FLASH_MODES.get(flash);
-            if (modes!= null && modes.contains(mode)) {
+            if (modes != null && modes.contains(mode)) {
                 mCameraParameters.setFlashMode(mode);
                 mFlash = flash;
                 return true;

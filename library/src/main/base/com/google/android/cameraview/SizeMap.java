@@ -54,16 +54,20 @@ class SizeMap {
         return true;
     }
 
-    public Set<AspectRatio> ratios() {
+    Set<AspectRatio> ratios() {
         return mRatios.keySet();
     }
 
-    public SortedSet<Size> sizes(AspectRatio ratio) {
+    SortedSet<Size> sizes(AspectRatio ratio) {
         return mRatios.get(ratio);
     }
 
-    public void clear() {
+    void clear() {
         mRatios.clear();
+    }
+
+    boolean isEmpty() {
+        return mRatios.isEmpty();
     }
 
 }

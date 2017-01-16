@@ -11,15 +11,11 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 -->
-<manifest package="com.google.android.cameraview"
-          xmlns:android="http://schemas.android.com/apk/res/android">
+<resources>
+    <public name="facing" type="attr"/>
+    <public name="aspectRatio" type="attr"/>
+    <public name="autoFocus" type="attr"/>
+    <public name="flash" type="attr"/>
 
-    <uses-permission android:name="android.permission.CAMERA"/>
-
-    <uses-feature android:name="android.hardware.camera"/>
-    <uses-feature
-        android:name="android.hardware.camera.autofocus"
-        android:required="false"/>
-
-    <application/>
-</manifest>
+    <public name="Widget.CameraView" type="style"/>
+</resources>

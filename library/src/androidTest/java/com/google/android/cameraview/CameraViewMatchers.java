@@ -16,22 +16,27 @@
 
 package com.google.android.cameraview;
 
-import android.graphics.SurfaceTexture;
+import android.support.annotation.NonNull;
+import android.view.View;
 
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
+import org.hamcrest.TypeSafeMatcher;
 
-/**
- * Stores information about the {@link SurfaceTexture} showing camera preview.
- */
-class SurfaceInfo {
+class CameraViewMatchers {
 
-    SurfaceTexture surface;
-    int width;
-    int height;
+    static Matcher<View> hasAspectRatio(@NonNull final AspectRatio ratio) {
+        return new TypeSafeMatcher<View>() {
+            @Override
+            public void describeTo(Description description) {
+                description.appendText("has aspect ratio of " + ratio);
+            }
 
-    void configure(SurfaceTexture s, int w, int h) {
-        surface = s;
-        width = w;
-        height = h;
+            @Override
+            protected boolean matchesSafely(View view) {
+                return ratio.equals(((CameraView) view).getAspectRatio());
+            }
+        };
     }
 
 }

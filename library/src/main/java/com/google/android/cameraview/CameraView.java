@@ -19,7 +19,6 @@ package com.google.android.cameraview;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
-import android.graphics.Matrix;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -29,7 +28,6 @@ import android.support.annotation.Nullable;
 import android.support.v4.os.ParcelableCompat;
 import android.support.v4.os.ParcelableCompatCreatorCallbacks;
 import android.util.AttributeSet;
-import android.view.TextureView;
 import android.widget.FrameLayout;
 
 import java.lang.annotation.Retention;
@@ -71,13 +69,11 @@ public class CameraView extends FrameLayout {
     public @interface Flash {
     }
 
-    private final CameraViewImpl mImpl;
+    CameraViewImpl mImpl;
 
     private final CallbackBridge mCallbacks;
 
     private boolean mAdjustViewBounds;
-
-    private final TextureView mTextureView;
 
     private final DisplayOrientationDetector mDisplayOrientationDetector;
 
@@ -93,16 +89,15 @@ public class CameraView extends FrameLayout {
     public CameraView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         // Internal setup
+        final PreviewImpl preview = createPreviewImpl(context);
         mCallbacks = new CallbackBridge();
         if (Build.VERSION.SDK_INT < 21) {
-            mImpl = new Camera1(mCallbacks);
+            mImpl = new Camera1(mCallbacks, preview);
+        } else if (Build.VERSION.SDK_INT < 23) {
+            mImpl = new Camera2(mCallbacks, preview, context);
         } else {
-            mImpl = new Camera2(mCallbacks, context);
+            mImpl = new Camera2Api23(mCallbacks, preview, context);
         }
-        // View content
-        inflate(context, R.layout.camera_view, this);
-        mTextureView = (TextureView) findViewById(R.id.texture_view);
-        mTextureView.setSurfaceTextureListener(mImpl.getSurfaceTextureListener());
         // Attributes
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
                 R.style.Widget_CameraView);
@@ -124,6 +119,17 @@ public class CameraView extends FrameLayout {
                 mImpl.setDisplayOrientation(displayOrientation);
             }
         };
+    }
+
+    @NonNull
+    private PreviewImpl createPreviewImpl(Context context) {
+        PreviewImpl preview;
+        if (Build.VERSION.SDK_INT < 14) {
+            preview = new SurfaceViewPreview(context, this);
+        } else {
+            preview = new TextureViewPreview(context, this);
+        }
+        return preview;
     }
 
     @Override
@@ -182,12 +188,12 @@ public class CameraView extends FrameLayout {
         }
         assert ratio != null;
         if (height < width * ratio.getY() / ratio.getX()) {
-            mTextureView.measure(
+            mImpl.getView().measure(
                     MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
                     MeasureSpec.makeMeasureSpec(width * ratio.getY() / ratio.getX(),
                             MeasureSpec.EXACTLY));
         } else {
-            mTextureView.measure(
+            mImpl.getView().measure(
                     MeasureSpec.makeMeasureSpec(height * ratio.getX() / ratio.getY(),
                             MeasureSpec.EXACTLY),
                     MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY));
@@ -223,7 +229,14 @@ public class CameraView extends FrameLayout {
      * {@link Activity#onResume()}.
      */
     public void start() {
-        mImpl.start();
+        if (!mImpl.start()) {
+            //store the state ,and restore this state after fall back o Camera1
+            Parcelable state=onSaveInstanceState();
+            // Camera2 uses legacy hardware layer; fall back to Camera1
+            mImpl = new Camera1(mCallbacks, createPreviewImpl(getContext()));
+            onRestoreInstanceState(state);
+            mImpl.start();
+        }
     }
 
     /**
@@ -316,7 +329,9 @@ public class CameraView extends FrameLayout {
      * @param ratio The {@link AspectRatio} to be set.
      */
     public void setAspectRatio(@NonNull AspectRatio ratio) {
-        mImpl.setAspectRatio(ratio);
+        if (mImpl.setAspectRatio(ratio)) {
+            requestLayout();
+        }
     }
 
     /**
@@ -384,6 +399,9 @@ public class CameraView extends FrameLayout {
 
         private boolean mRequestLayoutOnOpen;
 
+        CallbackBridge() {
+        }
+
         public void add(Callback callback) {
             mCallbacks.add(callback);
         }
@@ -415,11 +433,6 @@ public class CameraView extends FrameLayout {
             for (Callback callback : mCallbacks) {
                 callback.onPictureTaken(CameraView.this, data);
             }
-        }
-
-        @Override
-        public void onTransformUpdated(Matrix matrix) {
-            mTextureView.setTransform(matrix);
         }
 
         public void reserveRequestLayoutOnOpen() {

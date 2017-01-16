@@ -16,15 +16,25 @@
 
 package com.google.android.cameraview;
 
-import com.google.android.cameraview.test.R;
+import static android.support.test.espresso.Espresso.onView;
+import static android.support.test.espresso.Espresso.registerIdlingResources;
+import static android.support.test.espresso.Espresso.unregisterIdlingResources;
+import static android.support.test.espresso.assertion.ViewAssertions.matches;
+import static android.support.test.espresso.matcher.ViewMatchers.assertThat;
+import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
+import static android.support.test.espresso.matcher.ViewMatchers.withId;
 
-import org.hamcrest.Matcher;
-import org.hamcrest.core.IsAnything;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static com.google.android.cameraview.AspectRatioIsCloseTo.closeToOrInverse;
+import static com.google.android.cameraview.CameraViewActions.setAspectRatio;
+import static com.google.android.cameraview.CameraViewMatchers.hasAspectRatio;
+
+import static junit.framework.Assert.assertFalse;
+
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 import android.graphics.Bitmap;
 import android.os.SystemClock;
@@ -40,24 +50,19 @@ import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.google.android.cameraview.test.R;
+
+import org.hamcrest.Matcher;
+import org.hamcrest.core.IsAnything;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Set;
-
-import static android.support.test.espresso.Espresso.onView;
-import static android.support.test.espresso.Espresso.registerIdlingResources;
-import static android.support.test.espresso.Espresso.unregisterIdlingResources;
-import static android.support.test.espresso.assertion.ViewAssertions.matches;
-import static android.support.test.espresso.matcher.ViewMatchers.assertThat;
-import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
-import static android.support.test.espresso.matcher.ViewMatchers.withId;
-import static com.google.android.cameraview.AspectRatioIsCloseTo.closeToOrInverse;
-import static junit.framework.Assert.assertFalse;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.hasItem;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 @RunWith(AndroidJUnit4.class)
 public class CameraViewTest {
@@ -88,8 +93,13 @@ public class CameraViewTest {
     public void testSetup() {
         onView(withId(R.id.camera))
                 .check(matches(isDisplayed()));
-        onView(withId(R.id.texture_view))
-                .check(matches(isDisplayed()));
+        try {
+            onView(withId(R.id.texture_view))
+                    .check(matches(isDisplayed()));
+        } catch (NoMatchingViewException e) {
+            onView(withId(R.id.surface_view))
+                    .check(matches(isDisplayed()));
+        }
     }
 
     @Test
@@ -102,31 +112,13 @@ public class CameraViewTest {
 
     @Test
     public void testAspectRatio() {
-        onView(withId(R.id.camera))
-                .check(new ViewAssertion() {
-                    @Override
-                    public void check(View view, NoMatchingViewException noViewFoundException) {
-                        CameraView cameraView = (CameraView) view;
-                        AspectRatio ratio = cameraView.getAspectRatio();
-                        assertThat(ratio, is(notNullValue()));
-                        Set<AspectRatio> ratios = cameraView.getSupportedAspectRatios();
-                        assertThat(ratios.size(), is(greaterThanOrEqualTo(1)));
-                        assertThat(ratios, hasItem(ratio));
-                        if (ratios.size() == 1) {
-                            return;
-                        }
-                        // Pick one ratio to change to
-                        for (AspectRatio r : ratios) {
-                            if (!r.equals(ratio)) {
-                                ratio = r;
-                                break;
-                            }
-                        }
-                        assert ratio != null;
-                        cameraView.setAspectRatio(ratio);
-                        assertThat(cameraView.getAspectRatio(), is(equalTo(ratio)));
-                    }
-                });
+        final CameraView cameraView = (CameraView) rule.getActivity().findViewById(R.id.camera);
+        final Set<AspectRatio> ratios = cameraView.getSupportedAspectRatios();
+        for (AspectRatio ratio : ratios) {
+            onView(withId(R.id.camera))
+                    .perform(setAspectRatio(ratio))
+                    .check(matches(hasAspectRatio(ratio)));
+        }
     }
 
     @Test
@@ -161,18 +153,20 @@ public class CameraViewTest {
     }
 
     @Test
-    public void testTextureViewSize() {
+    public void testPreviewViewSize() {
         onView(withId(R.id.camera))
                 .check(new ViewAssertion() {
                     @Override
                     public void check(View view, NoMatchingViewException noViewFoundException) {
                         CameraView cameraView = (CameraView) view;
-                        TextureView textureView = (TextureView)
-                                view.findViewById(R.id.texture_view);
+                        View preview = view.findViewById(R.id.texture_view);
+                        if (preview == null) {
+                            preview = view.findViewById(R.id.surface_view);
+                        }
                         AspectRatio cameraRatio = cameraView.getAspectRatio();
                         assert cameraRatio != null;
                         AspectRatio textureRatio = AspectRatio.of(
-                                textureView.getWidth(), textureView.getHeight());
+                                preview.getWidth(), preview.getHeight());
                         assertThat(textureRatio, is(closeToOrInverse(cameraRatio)));
                     }
                 });
@@ -262,6 +256,9 @@ public class CameraViewTest {
         return new ViewAssertion() {
             @Override
             public void check(View view, NoMatchingViewException noViewFoundException) {
+                if (android.os.Build.VERSION.SDK_INT < 14) {
+                    return;
+                }
                 CameraView cameraView = (CameraView) view;
                 TextureView textureView = (TextureView) cameraView.findViewById(R.id.texture_view);
                 Bitmap bitmap = textureView.getBitmap();
