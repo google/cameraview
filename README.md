@@ -1,4 +1,6 @@
-# CameraView [![](https://jitpack.io/v/softfocusbr/cameraview.svg)](https://jitpack.io/#softfocusbr/cameraview)
+# CameraView 
+
+[![](https://jitpack.io/v/softfocusbr/cameraview.svg)](https://jitpack.io/#softfocusbr/cameraview)
 
 *This is a preview release. The API is subject to change.*
 
