@@ -20,6 +20,7 @@ import android.Manifest;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -39,6 +40,9 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.google.android.cameraview.AspectRatio;
@@ -85,6 +89,7 @@ public class MainActivity extends AppCompatActivity implements
 
     private int mCurrentFlash;
 
+    private FrameLayout cameraLayout;
     private CameraView mCameraView;
 
     private Handler mBackgroundHandler;
@@ -106,10 +111,7 @@ public class MainActivity extends AppCompatActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mCameraView = (CameraView) findViewById(R.id.camera);
-        if (mCameraView != null) {
-            mCameraView.addCallback(mCallback);
-        }
+        cameraLayout = (FrameLayout) findViewById(R.id.camera);
         FloatingActionButton takePicture = (FloatingActionButton) findViewById(R.id.take_picture);
         if (takePicture != null) {
             takePicture.setOnClickListener(mOnClickListener);
@@ -120,31 +122,46 @@ public class MainActivity extends AppCompatActivity implements
         if (actionBar != null) {
             actionBar.setDisplayShowTitleEnabled(false);
         }
+       // addCameraToLayout();
     }
+
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-                == PackageManager.PERMISSION_GRANTED) {
+        if (mCameraView == null)
+            addCameraToLayout();
+    }
+
+    private void addCameraToLayout() {
+        cameraLayout.removeAllViews();
+        mCameraView = new CameraView(this);
+        mCameraView.setId(R.id.camera);
+        mCameraView.setAutoFocus(true);
+        mCameraView.setFacing(CameraView.FACING_BACK);
+        mCameraView.setFlash(CameraView.FLASH_OFF);
+        cameraLayout.addView(mCameraView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        mCameraView.addCallback(mCallback);
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             mCameraView.start();
-        } else if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                Manifest.permission.CAMERA)) {
+        } else if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.CAMERA) || ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) || ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_EXTERNAL_STORAGE)) {
             ConfirmationDialogFragment
                     .newInstance(R.string.camera_permission_confirmation,
-                            new String[]{Manifest.permission.CAMERA},
+                            new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE},
                             REQUEST_CAMERA_PERMISSION,
                             R.string.camera_permission_not_granted)
                     .show(getSupportFragmentManager(), FRAGMENT_DIALOG);
         } else {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA},
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE},
                     REQUEST_CAMERA_PERMISSION);
         }
     }
 
+
     @Override
     protected void onPause() {
-        mCameraView.stop();
+        if (mCameraView != null)
+            mCameraView.stop();
         super.onPause();
     }
 
@@ -163,7 +180,7 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-            @NonNull int[] grantResults) {
+                                           @NonNull int[] grantResults) {
         switch (requestCode) {
             case REQUEST_CAMERA_PERMISSION:
                 if (permissions.length != 1 || grantResults.length != 1) {
@@ -173,6 +190,7 @@ public class MainActivity extends AppCompatActivity implements
                     Toast.makeText(this, R.string.camera_permission_not_granted,
                             Toast.LENGTH_SHORT).show();
                 }
+                mCameraView.start();
                 // No need to start camera here; it is handled by onResume
                 break;
         }
@@ -206,8 +224,7 @@ public class MainActivity extends AppCompatActivity implements
             case R.id.switch_camera:
                 if (mCameraView != null) {
                     int facing = mCameraView.getFacing();
-                    mCameraView.setFacing(facing == CameraView.FACING_FRONT ?
-                            CameraView.FACING_BACK : CameraView.FACING_FRONT);
+                    mCameraView.setFacing(facing == CameraView.FACING_FRONT ? CameraView.FACING_BACK : CameraView.FACING_FRONT);
                 }
                 break;
         }
@@ -235,19 +252,19 @@ public class MainActivity extends AppCompatActivity implements
             = new CameraView.Callback() {
 
         @Override
-        public void onCameraOpened(CameraView cameraView) {
+        public void onCameraOpened(CameraView mCameraView) {
             Log.d(TAG, "onCameraOpened");
         }
 
         @Override
-        public void onCameraClosed(CameraView cameraView) {
+        public void onCameraClosed(CameraView mCameraView) {
             Log.d(TAG, "onCameraClosed");
         }
 
         @Override
-        public void onPictureTaken(CameraView cameraView, final byte[] data) {
-            Log.d(TAG, "onPictureTaken " + data.length);
-            Toast.makeText(cameraView.getContext(), R.string.picture_taken, Toast.LENGTH_SHORT)
+        public void onPictureTaken(final CameraView mCameraView, final byte[] data) {
+
+            Toast.makeText(mCameraView.getContext(), R.string.picture_taken, Toast.LENGTH_SHORT)
                     .show();
             getBackgroundHandler().post(new Runnable() {
                 @Override
@@ -270,11 +287,29 @@ public class MainActivity extends AppCompatActivity implements
                             }
                         }
                     }
+                    new ImageRotation(file.getAbsolutePath(), new ImageRotator() {
+                        @Override
+                        public void rotateImage(Bitmap data) {
+                            showImage(data);
+                        }
+                    }, mCameraView.getFacing()).execute();
                 }
             });
         }
-
     };
+
+    private void showImage(Bitmap data) {
+        Dialog dialog = new Dialog(this);
+        ImageView imageView=new ImageView(this);
+        imageView.setImageBitmap(data);
+        dialog.setContentView(imageView);
+        dialog.show();
+    }
+
+
+    interface ImageRotator {
+        void rotateImage(Bitmap data);
+    }
 
     public static class ConfirmationDialogFragment extends DialogFragment {
 
@@ -284,7 +319,7 @@ public class MainActivity extends AppCompatActivity implements
         private static final String ARG_NOT_GRANTED_MESSAGE = "not_granted_message";
 
         public static ConfirmationDialogFragment newInstance(@StringRes int message,
-                String[] permissions, int requestCode, @StringRes int notGrantedMessage) {
+                                                             String[] permissions, int requestCode, @StringRes int notGrantedMessage) {
             ConfirmationDialogFragment fragment = new ConfirmationDialogFragment();
             Bundle args = new Bundle();
             args.putInt(ARG_MESSAGE, message);
