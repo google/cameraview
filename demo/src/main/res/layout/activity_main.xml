@@ -22,12 +22,14 @@
     <include
         layout="@layout/include_camera"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_height="0dp"
+        android:layout_weight="1"
+     />
 
     <include
         layout="@layout/include_control"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_weight="0.4"/>
 
 </LinearLayout>
