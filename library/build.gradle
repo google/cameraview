@@ -14,13 +14,21 @@
 
 apply plugin: 'com.android.library'
 
+
+def final toolsVersion = '25.0.1'
+def final compileSdk = 25
+def final minSdk = 9
+def final targetSdk = 25
+def final supportLibrary = '25.0.1'
+
+
 android {
-    compileSdkVersion rootProject.ext.compileSdkVersion
-    buildToolsVersion rootProject.ext.buildToolsVersion
+    compileSdkVersion compileSdk
+    buildToolsVersion toolsVersion
 
     defaultConfig {
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
+        minSdkVersion minSdk
+        targetSdkVersion targetSdk
         testInstrumentationRunner 'android.support.test.runner.AndroidJUnitRunner'
     }
     buildTypes {
@@ -39,8 +47,8 @@ android {
 }
 
 dependencies {
-    compile "com.android.support:support-annotations:$supportLibraryVersion"
-    compile "com.android.support:support-v4:$supportLibraryVersion"
+    compile "com.android.support:support-annotations:$supportLibrary"
+    compile "com.android.support:support-v4:$supportLibrary"
 
     // Tests
     testCompile 'junit:junit:4.12'
