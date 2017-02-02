@@ -20,6 +20,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.os.Build;
+import android.os.Handler;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.annotation.IntDef;
@@ -28,6 +29,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.os.ParcelableCompat;
 import android.support.v4.os.ParcelableCompatCreatorCallbacks;
 import android.util.AttributeSet;
+import android.view.View;
 import android.widget.FrameLayout;
 
 import java.lang.annotation.Retention;
@@ -37,7 +39,11 @@ import java.util.Set;
 
 public class CameraView extends FrameLayout {
 
-    /** The camera device faces the opposite direction as the device's screen. */
+    private static final int CAMERA_AUTO_FOCUS_DELAY = 2000;
+
+    /**
+     * The camera device faces the opposite direction as the device's screen.
+     */
     public static final int FACING_BACK = Constants.FACING_BACK;
 
     /** The camera device faces the same direction as the device's screen. */
@@ -76,6 +82,8 @@ public class CameraView extends FrameLayout {
     private boolean mAdjustViewBounds;
 
     private final DisplayOrientationDetector mDisplayOrientationDetector;
+
+    private final Handler handler = new Handler();
 
     public CameraView(Context context) {
         this(context, null);
@@ -119,6 +127,20 @@ public class CameraView extends FrameLayout {
                 mImpl.setDisplayOrientation(displayOrientation);
             }
         };
+
+        setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (getAutoFocus()) {
+                    setAutoFocus(false);
+                    setAutoFocus(true);
+                }
+            }
+        });
+    }
+
+    public boolean isOldCameraApi() {
+        return mImpl instanceof Camera1;
     }
 
     @NonNull
@@ -237,6 +259,16 @@ public class CameraView extends FrameLayout {
             onRestoreInstanceState(state);
             mImpl.start();
         }
+
+        // needed because of focusing issues on samsung devices (S5) etc.
+        if (mImpl.getFacing() == FACING_BACK) {
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    setAutoFocus(true);
+                }
+            }, CAMERA_AUTO_FOCUS_DELAY);
+        }
     }
 
     /**
@@ -244,6 +276,7 @@ public class CameraView extends FrameLayout {
      * {@link Activity#onPause()}.
      */
     public void stop() {
+        handler.removeCallbacksAndMessages(null);
         mImpl.stop();
     }
 
@@ -344,6 +377,27 @@ public class CameraView extends FrameLayout {
         return mImpl.getAspectRatio();
     }
 
+    public AspectRatio pickClosestRatioTo(Set<AspectRatio> supportedAspectRatios, AspectRatio aspectRatio) {
+        double minAspectRatio = 10d;
+        AspectRatio ratio = null;
+        for (AspectRatio cameraAspectRatio : supportedAspectRatios) {
+            double proportion = ((double) cameraAspectRatio.getX() / cameraAspectRatio.getY());
+
+            // Get the proportion of the expected value
+            double expectedProportion = ((double)aspectRatio.getX()/aspectRatio.getY());
+
+            // This is the difference by which we filter the closest distance
+            double result = Math.abs(expectedProportion - proportion);
+
+            if (result < minAspectRatio) {
+                minAspectRatio = result;
+                ratio = cameraAspectRatio;
+            }
+        }
+
+        return ratio;
+    }
+
     /**
      * Enables or disables the continuous auto-focus mode. When the current camera doesn't support
      * auto-focus, calling this method will be ignored.
@@ -363,6 +417,10 @@ public class CameraView extends FrameLayout {
      */
     public boolean getAutoFocus() {
         return mImpl.getAutoFocus();
+    }
+
+    public int getOrientation() {
+        return mImpl.getOrientation();
     }
 
     /**

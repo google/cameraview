@@ -40,6 +40,9 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.SortedSet;
 
+import static android.R.attr.orientation;
+import static android.R.attr.y;
+
 @TargetApi(21)
 class Camera2 extends CameraViewImpl {
 
@@ -193,6 +196,11 @@ class Camera2 extends CameraViewImpl {
             public void onSurfaceChanged() {
                 startCaptureSession();
             }
+
+            @Override
+            public void onSurfaceDestroyed() {
+                stop();
+            }
         });
     }
 
@@ -203,12 +211,19 @@ class Camera2 extends CameraViewImpl {
         }
         collectCameraInfo();
         prepareImageReader();
+        Log.d("CameraView Start", "Camera " + chooseOptimalSize().toString() + " Picture " + mPictureSizes.sizes(mAspectRatio).last());
+        Log.d("CameraView Start2", "Camera " + mPreviewSizes.sizesString(mAspectRatio) + " Picture " + mPictureSizes.sizesString(mAspectRatio));
+
+        if(mPreviewRequestBuilder == null) {
+            startCaptureSession();
+        }
         startOpeningCamera();
         return true;
     }
 
     @Override
     void stop() {
+        mAutoFocus = false;
         if (mCaptureSession != null) {
             mCaptureSession.close();
             mCaptureSession = null;
@@ -252,6 +267,11 @@ class Camera2 extends CameraViewImpl {
 
     @Override
     boolean setAspectRatio(AspectRatio ratio) {
+        // https://github.com/google/cameraview/issues/46
+        chooseCameraIdByFacing();
+        collectCameraInfo();
+        prepareImageReader();
+
         if (ratio == null || ratio.equals(mAspectRatio) ||
                 !mPreviewSizes.ratios().contains(ratio)) {
             // TODO: Better error handling
@@ -333,6 +353,11 @@ class Camera2 extends CameraViewImpl {
     void setDisplayOrientation(int displayOrientation) {
         mDisplayOrientation = displayOrientation;
         mPreview.setDisplayOrientation(mDisplayOrientation);
+    }
+
+    @Override
+    public int getOrientation() {
+        return orientation;
     }
 
     /**
@@ -447,7 +472,7 @@ class Camera2 extends CameraViewImpl {
      * <p>The result will be continuously processed in {@link #mSessionCallback}.</p>
      */
     void startCaptureSession() {
-        if (!isCameraOpened() || !mPreview.isReady() || mImageReader == null) {
+        if (!isCameraOpened() || mPreview == null || !mPreview.isReady() || mImageReader == null) {
             return;
         }
         Size previewSize = chooseOptimalSize();
@@ -458,8 +483,8 @@ class Camera2 extends CameraViewImpl {
             mPreviewRequestBuilder.addTarget(surface);
             mCamera.createCaptureSession(Arrays.asList(surface, mImageReader.getSurface()),
                     mSessionCallback, null);
-        } catch (CameraAccessException e) {
-            throw new RuntimeException("Failed to start camera session");
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -615,8 +640,8 @@ class Camera2 extends CameraViewImpl {
                     new CameraCaptureSession.CaptureCallback() {
                         @Override
                         public void onCaptureCompleted(@NonNull CameraCaptureSession session,
-                                @NonNull CaptureRequest request,
-                                @NonNull TotalCaptureResult result) {
+                                                       @NonNull CaptureRequest request,
+                                                       @NonNull TotalCaptureResult result) {
                             unlockFocus();
                         }
                     }, null);
@@ -670,13 +695,13 @@ class Camera2 extends CameraViewImpl {
 
         @Override
         public void onCaptureProgressed(@NonNull CameraCaptureSession session,
-                @NonNull CaptureRequest request, @NonNull CaptureResult partialResult) {
+                                        @NonNull CaptureRequest request, @NonNull CaptureResult partialResult) {
             process(partialResult);
         }
 
         @Override
         public void onCaptureCompleted(@NonNull CameraCaptureSession session,
-                @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
+                                       @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
             process(result);
         }
 
