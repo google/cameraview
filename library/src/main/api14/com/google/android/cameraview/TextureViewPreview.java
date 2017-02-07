@@ -54,6 +54,7 @@ class TextureViewPreview extends PreviewImpl {
             @Override
             public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
                 setSize(0, 0);
+                dispatchSurfaceDestroyed();
                 return true;
             }
 

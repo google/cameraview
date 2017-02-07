@@ -24,9 +24,11 @@ import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
+import android.hardware.camera2.params.Face;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
@@ -39,6 +41,9 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.SortedSet;
+
+import static android.R.attr.orientation;
+import static android.R.attr.y;
 
 @TargetApi(21)
 class Camera2 extends CameraViewImpl {
@@ -93,6 +98,10 @@ class Camera2 extends CameraViewImpl {
             mCaptureSession = session;
             updateAutoFocus();
             updateFlash();
+
+            // Set face detection
+            mPreviewRequestBuilder.set(CaptureRequest.STATISTICS_FACE_DETECT_MODE,
+                    CameraMetadata.STATISTICS_FACE_DETECT_MODE_FULL);
             try {
                 mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(),
                         mCaptureCallback, null);
@@ -185,6 +194,8 @@ class Camera2 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
+    private CameraView.FaceDetectionCallback faceDetectionCallback;
+
     Camera2(Callback callback, PreviewImpl preview, Context context) {
         super(callback, preview);
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
@@ -192,6 +203,11 @@ class Camera2 extends CameraViewImpl {
             @Override
             public void onSurfaceChanged() {
                 startCaptureSession();
+            }
+
+            @Override
+            public void onSurfaceDestroyed() {
+                stop();
             }
         });
     }
@@ -203,12 +219,19 @@ class Camera2 extends CameraViewImpl {
         }
         collectCameraInfo();
         prepareImageReader();
+        Log.d("CameraView Start", "Camera " + chooseOptimalSize().toString() + " Picture " + mPictureSizes.sizes(mAspectRatio).last());
+        Log.d("CameraView Start2", "Camera " + mPreviewSizes.sizesString(mAspectRatio) + " Picture " + mPictureSizes.sizesString(mAspectRatio));
+
+        if (mPreviewRequestBuilder == null) {
+            startCaptureSession();
+        }
         startOpeningCamera();
         return true;
     }
 
     @Override
     void stop() {
+        mAutoFocus = false;
         if (mCaptureSession != null) {
             mCaptureSession.close();
             mCaptureSession = null;
@@ -252,6 +275,11 @@ class Camera2 extends CameraViewImpl {
 
     @Override
     boolean setAspectRatio(AspectRatio ratio) {
+        // https://github.com/google/cameraview/issues/46
+        chooseCameraIdByFacing();
+        collectCameraInfo();
+        prepareImageReader();
+
         if (ratio == null || ratio.equals(mAspectRatio) ||
                 !mPreviewSizes.ratios().contains(ratio)) {
             // TODO: Better error handling
@@ -335,6 +363,16 @@ class Camera2 extends CameraViewImpl {
         mPreview.setDisplayOrientation(mDisplayOrientation);
     }
 
+    @Override
+    public int getOrientation() {
+        return orientation;
+    }
+
+    @Override
+    void setFaceDetectionCallback(CameraView.FaceDetectionCallback callback) {
+        this.faceDetectionCallback = callback;
+    }
+
     /**
      * <p>Chooses a camera ID by the specified camera facing ({@link #mFacing}).</p>
      * <p>This rewrites {@link #mCameraId}, {@link #mCameraCharacteristics}, and optionally
@@ -351,8 +389,9 @@ class Camera2 extends CameraViewImpl {
                 CameraCharacteristics characteristics = mCameraManager.getCameraCharacteristics(id);
                 Integer level = characteristics.get(
                         CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL);
-                if (level == null ||
-                        level == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY) {
+                if (level == null
+                        || level == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED
+                        || level == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY) {
                     continue;
                 }
                 Integer internal = characteristics.get(CameraCharacteristics.LENS_FACING);
@@ -370,8 +409,9 @@ class Camera2 extends CameraViewImpl {
             mCameraCharacteristics = mCameraManager.getCameraCharacteristics(mCameraId);
             Integer level = mCameraCharacteristics.get(
                     CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL);
-            if (level == null ||
-                    level == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY) {
+            if (level == null
+                    || level == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED
+                    || level == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY) {
                 return false;
             }
             Integer internal = mCameraCharacteristics.get(CameraCharacteristics.LENS_FACING);
@@ -447,7 +487,7 @@ class Camera2 extends CameraViewImpl {
      * <p>The result will be continuously processed in {@link #mSessionCallback}.</p>
      */
     void startCaptureSession() {
-        if (!isCameraOpened() || !mPreview.isReady() || mImageReader == null) {
+        if (!isCameraOpened() || mPreview == null || !mPreview.isReady() || mImageReader == null) {
             return;
         }
         Size previewSize = chooseOptimalSize();
@@ -458,8 +498,8 @@ class Camera2 extends CameraViewImpl {
             mPreviewRequestBuilder.addTarget(surface);
             mCamera.createCaptureSession(Arrays.asList(surface, mImageReader.getSurface()),
                     mSessionCallback, null);
-        } catch (CameraAccessException e) {
-            throw new RuntimeException("Failed to start camera session");
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -615,8 +655,8 @@ class Camera2 extends CameraViewImpl {
                     new CameraCaptureSession.CaptureCallback() {
                         @Override
                         public void onCaptureCompleted(@NonNull CameraCaptureSession session,
-                                @NonNull CaptureRequest request,
-                                @NonNull TotalCaptureResult result) {
+                                                       @NonNull CaptureRequest request,
+                                                       @NonNull TotalCaptureResult result) {
                             unlockFocus();
                         }
                     }, null);
@@ -649,7 +689,7 @@ class Camera2 extends CameraViewImpl {
     /**
      * A {@link CameraCaptureSession.CaptureCallback} for capturing a still picture.
      */
-    private static abstract class PictureCaptureCallback
+    private abstract class PictureCaptureCallback
             extends CameraCaptureSession.CaptureCallback {
 
         static final int STATE_PREVIEW = 0;
@@ -670,18 +710,31 @@ class Camera2 extends CameraViewImpl {
 
         @Override
         public void onCaptureProgressed(@NonNull CameraCaptureSession session,
-                @NonNull CaptureRequest request, @NonNull CaptureResult partialResult) {
+                                        @NonNull CaptureRequest request, @NonNull CaptureResult partialResult) {
             process(partialResult);
         }
 
         @Override
         public void onCaptureCompleted(@NonNull CameraCaptureSession session,
-                @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
+                                       @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
             process(result);
         }
 
         private void process(@NonNull CaptureResult result) {
-            switch (mState) {
+
+            Integer mode = result.get(CaptureResult.STATISTICS_FACE_DETECT_MODE);
+            Face[] faces = result.get(CaptureResult.STATISTICS_FACES);
+            if (faces != null && mode != null && faceDetectionCallback != null) {
+
+                if (faces.length > 0) {
+                    faceDetectionCallback.onFaceDetected();
+                } else {
+                    faceDetectionCallback.onFaceRemoved();
+                }
+            }
+            switch (mState)
+
+            {
                 case STATE_LOCKING: {
                     Integer af = result.get(CaptureResult.CONTROL_AF_STATE);
                     if (af == null) {

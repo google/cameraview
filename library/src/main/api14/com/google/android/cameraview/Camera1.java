@@ -20,8 +20,13 @@ import android.annotation.SuppressLint;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.os.Build;
+import android.support.annotation.RequiresApi;
 import android.support.v4.util.SparseArrayCompat;
+import android.util.Log;
+import android.view.Surface;
 import android.view.SurfaceHolder;
+
+import com.google.android.gms.vision.face.Face;
 
 import java.io.IOException;
 import java.util.List;
@@ -43,6 +48,8 @@ class Camera1 extends CameraViewImpl {
         FLASH_MODES.put(Constants.FLASH_RED_EYE, Camera.Parameters.FLASH_MODE_RED_EYE);
     }
 
+    private CameraView.FaceDetectionCallback faceDetectionCallback;
+
     private int mCameraId;
 
     Camera mCamera;
@@ -57,6 +64,8 @@ class Camera1 extends CameraViewImpl {
 
     private AspectRatio mAspectRatio;
 
+    private final Object cameraPictureTakenLock = new Object();
+
     private boolean mShowingPreview;
 
     private boolean mAutoFocus;
@@ -66,9 +75,13 @@ class Camera1 extends CameraViewImpl {
     private int mFlash;
 
     private int mDisplayOrientation;
+    private boolean isTakingPicture = false;
 
-    Camera1(Callback callback, PreviewImpl preview) {
+    Camera1(Callback callback, PreviewImpl preview, CameraView.FaceDetectionCallback faceDetectionCallback) {
         super(callback, preview);
+
+        this.faceDetectionCallback = faceDetectionCallback;
+
         preview.setCallback(new PreviewImpl.Callback() {
             @Override
             public void onSurfaceChanged() {
@@ -77,7 +90,13 @@ class Camera1 extends CameraViewImpl {
                     adjustCameraParameters();
                 }
             }
+
+            @Override
+            public void onSurfaceDestroyed() {
+                stop();
+            }
         });
+
     }
 
     @Override
@@ -89,6 +108,9 @@ class Camera1 extends CameraViewImpl {
         }
         mShowingPreview = true;
         mCamera.startPreview();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+            mCamera.setFaceDetectionListener(new MyFaceDetectionListener());
+        }
         return true;
     }
 
@@ -114,6 +136,8 @@ class Camera1 extends CameraViewImpl {
                 if (needsToStopPreview) {
                     mCamera.startPreview();
                 }
+
+
             } else {
                 mCamera.setPreviewTexture((SurfaceTexture) mPreview.getSurfaceTexture());
             }
@@ -156,6 +180,7 @@ class Camera1 extends CameraViewImpl {
             mAspectRatio = ratio;
             return true;
         } else if (!mAspectRatio.equals(ratio)) {
+            setupSupportedPreviewSizes();
             final Set<Size> sizes = mPreviewSizes.sizes(ratio);
             if (sizes == null) {
                 throw new UnsupportedOperationException(ratio + " is not supported");
@@ -209,6 +234,11 @@ class Camera1 extends CameraViewImpl {
 
     @Override
     void takePicture() {
+        if (isTakingPicture) {
+            return;
+        }
+
+        isTakingPicture = true;
         if (!isCameraOpened()) {
             throw new IllegalStateException(
                     "Camera is not ready. Call start() before takePicture().");
@@ -227,14 +257,17 @@ class Camera1 extends CameraViewImpl {
     }
 
     void takePictureInternal() {
-        mCamera.takePicture(null, null, null, new Camera.PictureCallback() {
-            @Override
-            public void onPictureTaken(byte[] data, Camera camera) {
-                mCallback.onPictureTaken(data);
-                camera.cancelAutoFocus();
-                camera.startPreview();
-            }
-        });
+        synchronized (cameraPictureTakenLock) {
+            mCamera.takePicture(null, null, null, new Camera.PictureCallback() {
+                @Override
+                public void onPictureTaken(byte[] data, Camera camera) {
+                    mCallback.onPictureTaken(data);
+                    camera.cancelAutoFocus();
+                    camera.startPreview();
+                    isTakingPicture = false;
+                }
+            });
+        }
     }
 
     @Override
@@ -258,6 +291,16 @@ class Camera1 extends CameraViewImpl {
         }
     }
 
+    @Override
+    public int getOrientation() {
+        return mCameraInfo.orientation;
+    }
+
+    @Override
+    void setFaceDetectionCallback(CameraView.FaceDetectionCallback callback) {
+        this.faceDetectionCallback = callback;
+    }
+
     /**
      * This rewrites {@link #mCameraId} and {@link #mCameraInfo}.
      */
@@ -279,10 +322,7 @@ class Camera1 extends CameraViewImpl {
         mCamera = Camera.open(mCameraId);
         mCameraParameters = mCamera.getParameters();
         // Supported preview sizes
-        mPreviewSizes.clear();
-        for (Camera.Size size : mCameraParameters.getSupportedPreviewSizes()) {
-            mPreviewSizes.add(new Size(size.width, size.height));
-        }
+        setupSupportedPreviewSizes();
         // Supported picture sizes;
         mPictureSizes.clear();
         for (Camera.Size size : mCameraParameters.getSupportedPictureSizes()) {
@@ -294,10 +334,26 @@ class Camera1 extends CameraViewImpl {
         }
         adjustCameraParameters();
         mCamera.setDisplayOrientation(calcCameraRotation(mDisplayOrientation));
+
+        // start face detection only *after* preview has started
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+            if (mCameraParameters.getMaxNumDetectedFaces() > 0) {
+                // camera supports face detection, so can start it:
+                mCamera.startFaceDetection();
+            }
+        }
+
         mCallback.onCameraOpened();
     }
 
-    private AspectRatio chooseAspectRatio() {
+    private void setupSupportedPreviewSizes() {
+        mPreviewSizes.clear();
+        for (Camera.Size size : mCameraParameters.getSupportedPreviewSizes()) {
+            mPreviewSizes.add(new Size(size.width, size.height));
+        }
+    }
+
+    private AspectRatio chooseAspectRatio(SizeMap mPreviewSizes) {
         AspectRatio r = null;
         for (AspectRatio ratio : mPreviewSizes.ratios()) {
             r = ratio;
@@ -311,14 +367,23 @@ class Camera1 extends CameraViewImpl {
     void adjustCameraParameters() {
         SortedSet<Size> sizes = mPreviewSizes.sizes(mAspectRatio);
         if (sizes == null) { // Not supported
-            mAspectRatio = chooseAspectRatio();
+            mAspectRatio = chooseAspectRatio(mPreviewSizes);
             sizes = mPreviewSizes.sizes(mAspectRatio);
         }
         Size size = chooseOptimalSize(sizes);
         final Camera.Size currentSize = mCameraParameters.getPictureSize();
         if (currentSize.width != size.getWidth() || currentSize.height != size.getHeight()) {
             // Largest picture size in this ratio
-            final Size pictureSize = mPictureSizes.sizes(mAspectRatio).last();
+            Size pictureSize;
+            SortedSet<Size> sizes1 = mPictureSizes.sizes(mAspectRatio);
+            // Check in case the phone does have different preview resolution
+            // which is not supported as picture resolution
+            if (sizes1 == null) {
+                pictureSize = mPictureSizes.sizes(chooseAspectRatio(mPictureSizes)).last();
+            } else {
+                pictureSize = sizes1.last();
+            }
+
             if (mShowingPreview) {
                 mCamera.stopPreview();
             }
@@ -370,11 +435,30 @@ class Camera1 extends CameraViewImpl {
     }
 
     private int calcCameraRotation(int rotation) {
-        if (mCameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
-            return (360 - (mCameraInfo.orientation + rotation) % 360) % 360;
-        } else {  // back-facing
-            return (mCameraInfo.orientation - rotation + 360) % 360;
+        int degrees = 0;
+        switch (rotation) {
+            case Surface.ROTATION_0:
+                degrees = 0;
+                break;
+            case Surface.ROTATION_90:
+                degrees = 90;
+                break;
+            case Surface.ROTATION_180:
+                degrees = 180;
+                break;
+            case Surface.ROTATION_270:
+                degrees = 270;
+                break;
         }
+        int result;
+        if (mCameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            result = (mCameraInfo.orientation + degrees) % 360;
+            result = (360 - result) % 360;  // compensate the mirror
+        } else {  // back-facing
+            result = (mCameraInfo.orientation - degrees + 360) % 360;
+        }
+
+        return result;
     }
 
     /**
@@ -424,4 +508,17 @@ class Camera1 extends CameraViewImpl {
         }
     }
 
+    private class MyFaceDetectionListener implements Camera.FaceDetectionListener {
+
+        @Override
+        public void onFaceDetection(Camera.Face[] faces, Camera camera) {
+            if (faceDetectionCallback != null) {
+                if (faces.length > 0) {
+                    faceDetectionCallback.onFaceDetected();
+                } else {
+                    faceDetectionCallback.onFaceRemoved();
+                }
+            }
+        }
+    }
 }

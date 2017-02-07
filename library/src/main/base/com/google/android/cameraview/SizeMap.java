@@ -62,6 +62,15 @@ class SizeMap {
         return mRatios.get(ratio);
     }
 
+    String sizesString(AspectRatio ratio) {
+        SortedSet<Size> sizes = sizes(ratio);
+        StringBuilder sb = new StringBuilder();
+        for (Size size : sizes) {
+            sb.append(size.toString() + " ");
+        }
+        return sb.toString();
+    }
+
     void clear() {
         mRatios.clear();
     }
