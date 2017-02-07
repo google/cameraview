@@ -87,7 +87,10 @@ class Camera1 extends CameraViewImpl {
     @Override
     boolean start() {
         chooseCamera();
-        openCamera();
+        if (!openCamera()) {
+            return false;
+        }
+
         if (mPreview.isReady()) {
             setUpPreview();
         }
@@ -285,10 +288,17 @@ class Camera1 extends CameraViewImpl {
         mCameraId = INVALID_CAMERA_ID;
     }
 
-    private void openCamera() {
+    private boolean openCamera() {
         if (mCamera != null) {
             releaseCamera();
         }
+
+        mCamera = null;
+        if (mCameraId == INVALID_CAMERA_ID) {
+            mCallback.onCameraNotAvailable();
+            return false;
+        }
+
         mCamera = Camera.open(mCameraId);
         mCameraParameters = mCamera.getParameters();
         // Supported preview sizes
@@ -308,6 +318,7 @@ class Camera1 extends CameraViewImpl {
         adjustCameraParameters();
         mCamera.setDisplayOrientation(calcCameraRotation(mDisplayOrientation));
         mCallback.onCameraOpened();
+        return true;
     }
 
     private AspectRatio chooseAspectRatio() {
