@@ -449,6 +449,37 @@ public class CameraView extends FrameLayout {
             }
         }
 
+        @Override
+        public Size onChoosePreviewSize(SizeMap availableSizes, Size suggestedSize,
+            AspectRatio aspectRatio) {
+            for (Callback callback : mCallbacks) {
+                Size previewSize = callback.onChoosePreviewSize(CameraView.this, availableSizes,
+                        suggestedSize, aspectRatio);
+
+                // Take first non-null answer
+                if(previewSize != null) {
+                    return previewSize;
+                }
+            }
+            return suggestedSize;
+        }
+
+        @Override
+        public Size onChoosePictureSize(SizeMap availableSizes, AspectRatio aspectRatio) {
+            for (Callback callback : mCallbacks) {
+                Size pictureSize = callback.onChoosePictureSize(CameraView.this, availableSizes,
+                        aspectRatio);
+
+                // Take first non-null answer
+                if(pictureSize != null) {
+                    return pictureSize;
+                }
+            }
+
+            // Nobody stepped up, selected biggest size in that ratio
+            return availableSizes.sizes(aspectRatio).last();
+        }
+
         public void reserveRequestLayoutOnOpen() {
             mRequestLayoutOnOpen = true;
         }
@@ -535,6 +566,32 @@ public class CameraView extends FrameLayout {
          */
         public void onPictureTaken(CameraView cameraView, byte[] data) {
         }
-    }
 
+        /**
+         * Called when determining what size of preview to use
+         * @param cameraView        The associated {@link CameraView}.
+         * @param availableSizes    A SizeMap of available sizes grouped by aspect ratio
+         * @param suggestedSize     The default suggested size based on surface
+         * @param aspectRatio       The aspect ratio specified to the CameraView
+         * @return                  The desired preview size, or null for default
+         *                          (highest res of that aspect ratio)
+         */
+        public Size onChoosePreviewSize(CameraView cameraView, SizeMap availableSizes,
+                Size suggestedSize, AspectRatio aspectRatio) {
+            return suggestedSize;
+        }
+
+        /**
+         * Called when determining what size of picture to use
+         * @param cameraView        The associated {@link CameraView}.
+         * @param availableSizes    A SizeMap of available sizes grouped by aspect ratio
+         * @param aspectRatio       The aspect ratio specified to the CameraView
+         * @return                  The desired picture size, or null for default
+         *                          (highest res of that aspect ratio)
+         */
+         public Size onChoosePictureSize(CameraView cameraView, SizeMap availableSizes,
+                 AspectRatio aspectRatio) {
+            return null;
+         }
+    }
 }
