@@ -24,9 +24,11 @@ import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
+import android.hardware.camera2.params.Face;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
@@ -96,6 +98,10 @@ class Camera2 extends CameraViewImpl {
             mCaptureSession = session;
             updateAutoFocus();
             updateFlash();
+
+            // Set face detection
+            mPreviewRequestBuilder.set(CaptureRequest.STATISTICS_FACE_DETECT_MODE,
+                    CameraMetadata.STATISTICS_FACE_DETECT_MODE_FULL);
             try {
                 mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(),
                         mCaptureCallback, null);
@@ -188,6 +194,8 @@ class Camera2 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
+    private CameraView.FaceDetectionCallback faceDetectionCallback;
+
     Camera2(Callback callback, PreviewImpl preview, Context context) {
         super(callback, preview);
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
@@ -214,7 +222,7 @@ class Camera2 extends CameraViewImpl {
         Log.d("CameraView Start", "Camera " + chooseOptimalSize().toString() + " Picture " + mPictureSizes.sizes(mAspectRatio).last());
         Log.d("CameraView Start2", "Camera " + mPreviewSizes.sizesString(mAspectRatio) + " Picture " + mPictureSizes.sizesString(mAspectRatio));
 
-        if(mPreviewRequestBuilder == null) {
+        if (mPreviewRequestBuilder == null) {
             startCaptureSession();
         }
         startOpeningCamera();
@@ -358,6 +366,11 @@ class Camera2 extends CameraViewImpl {
     @Override
     public int getOrientation() {
         return orientation;
+    }
+
+    @Override
+    void setFaceDetectionCallback(CameraView.FaceDetectionCallback callback) {
+        this.faceDetectionCallback = callback;
     }
 
     /**
@@ -676,7 +689,7 @@ class Camera2 extends CameraViewImpl {
     /**
      * A {@link CameraCaptureSession.CaptureCallback} for capturing a still picture.
      */
-    private static abstract class PictureCaptureCallback
+    private abstract class PictureCaptureCallback
             extends CameraCaptureSession.CaptureCallback {
 
         static final int STATE_PREVIEW = 0;
@@ -708,7 +721,20 @@ class Camera2 extends CameraViewImpl {
         }
 
         private void process(@NonNull CaptureResult result) {
-            switch (mState) {
+
+            Integer mode = result.get(CaptureResult.STATISTICS_FACE_DETECT_MODE);
+            Face[] faces = result.get(CaptureResult.STATISTICS_FACES);
+            if (faces != null && mode != null && faceDetectionCallback != null) {
+
+                if (faces.length > 0) {
+                    faceDetectionCallback.onFaceDetected();
+                } else {
+                    faceDetectionCallback.onFaceRemoved();
+                }
+            }
+            switch (mState)
+
+            {
                 case STATE_LOCKING: {
                     Integer af = result.get(CaptureResult.CONTROL_AF_STATE);
                     if (af == null) {

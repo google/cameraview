@@ -81,4 +81,6 @@ abstract class CameraViewImpl {
 
     }
 
+    abstract void setFaceDetectionCallback(CameraView.FaceDetectionCallback callback);
+
 }

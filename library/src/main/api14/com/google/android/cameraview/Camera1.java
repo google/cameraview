@@ -20,9 +20,13 @@ import android.annotation.SuppressLint;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.os.Build;
+import android.support.annotation.RequiresApi;
 import android.support.v4.util.SparseArrayCompat;
+import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
+
+import com.google.android.gms.vision.face.Face;
 
 import java.io.IOException;
 import java.util.List;
@@ -43,6 +47,8 @@ class Camera1 extends CameraViewImpl {
         FLASH_MODES.put(Constants.FLASH_AUTO, Camera.Parameters.FLASH_MODE_AUTO);
         FLASH_MODES.put(Constants.FLASH_RED_EYE, Camera.Parameters.FLASH_MODE_RED_EYE);
     }
+
+    private CameraView.FaceDetectionCallback faceDetectionCallback;
 
     private int mCameraId;
 
@@ -71,8 +77,11 @@ class Camera1 extends CameraViewImpl {
     private int mDisplayOrientation;
     private boolean isTakingPicture = false;
 
-    Camera1(Callback callback, PreviewImpl preview) {
+    Camera1(Callback callback, PreviewImpl preview, CameraView.FaceDetectionCallback faceDetectionCallback) {
         super(callback, preview);
+
+        this.faceDetectionCallback = faceDetectionCallback;
+
         preview.setCallback(new PreviewImpl.Callback() {
             @Override
             public void onSurfaceChanged() {
@@ -87,6 +96,7 @@ class Camera1 extends CameraViewImpl {
                 stop();
             }
         });
+
     }
 
     @Override
@@ -98,6 +108,9 @@ class Camera1 extends CameraViewImpl {
         }
         mShowingPreview = true;
         mCamera.startPreview();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+            mCamera.setFaceDetectionListener(new MyFaceDetectionListener());
+        }
         return true;
     }
 
@@ -123,6 +136,8 @@ class Camera1 extends CameraViewImpl {
                 if (needsToStopPreview) {
                     mCamera.startPreview();
                 }
+
+
             } else {
                 mCamera.setPreviewTexture((SurfaceTexture) mPreview.getSurfaceTexture());
             }
@@ -281,6 +296,11 @@ class Camera1 extends CameraViewImpl {
         return mCameraInfo.orientation;
     }
 
+    @Override
+    void setFaceDetectionCallback(CameraView.FaceDetectionCallback callback) {
+        this.faceDetectionCallback = callback;
+    }
+
     /**
      * This rewrites {@link #mCameraId} and {@link #mCameraInfo}.
      */
@@ -314,6 +334,15 @@ class Camera1 extends CameraViewImpl {
         }
         adjustCameraParameters();
         mCamera.setDisplayOrientation(calcCameraRotation(mDisplayOrientation));
+
+        // start face detection only *after* preview has started
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+            if (mCameraParameters.getMaxNumDetectedFaces() > 0) {
+                // camera supports face detection, so can start it:
+                mCamera.startFaceDetection();
+            }
+        }
+
         mCallback.onCameraOpened();
     }
 
@@ -479,4 +508,17 @@ class Camera1 extends CameraViewImpl {
         }
     }
 
+    private class MyFaceDetectionListener implements Camera.FaceDetectionListener {
+
+        @Override
+        public void onFaceDetection(Camera.Face[] faces, Camera camera) {
+            if (faceDetectionCallback != null) {
+                if (faces.length > 0) {
+                    faceDetectionCallback.onFaceDetected();
+                } else {
+                    faceDetectionCallback.onFaceRemoved();
+                }
+            }
+        }
+    }
 }
