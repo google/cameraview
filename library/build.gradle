@@ -58,4 +58,6 @@ dependencies {
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2') {
         exclude module: 'support-annotations'
     }
+
+    compile 'com.google.android.gms:play-services-vision:10.0.1'
 }

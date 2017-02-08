@@ -46,31 +46,47 @@ public class CameraView extends FrameLayout {
      */
     public static final int FACING_BACK = Constants.FACING_BACK;
 
-    /** The camera device faces the same direction as the device's screen. */
+    /**
+     * The camera device faces the same direction as the device's screen.
+     */
     public static final int FACING_FRONT = Constants.FACING_FRONT;
 
-    /** Direction the camera faces relative to device screen. */
+    /**
+     * Direction the camera faces relative to device screen.
+     */
     @IntDef({FACING_BACK, FACING_FRONT})
     @Retention(RetentionPolicy.SOURCE)
     public @interface Facing {
     }
 
-    /** Flash will not be fired. */
+    /**
+     * Flash will not be fired.
+     */
     public static final int FLASH_OFF = Constants.FLASH_OFF;
 
-    /** Flash will always be fired during snapshot. */
+    /**
+     * Flash will always be fired during snapshot.
+     */
     public static final int FLASH_ON = Constants.FLASH_ON;
 
-    /** Constant emission of light during preview, auto-focus and snapshot. */
+    /**
+     * Constant emission of light during preview, auto-focus and snapshot.
+     */
     public static final int FLASH_TORCH = Constants.FLASH_TORCH;
 
-    /** Flash will be fired automatically when required. */
+    /**
+     * Flash will be fired automatically when required.
+     */
     public static final int FLASH_AUTO = Constants.FLASH_AUTO;
 
-    /** Flash will be fired in red-eye reduction mode. */
+    /**
+     * Flash will be fired in red-eye reduction mode.
+     */
     public static final int FLASH_RED_EYE = Constants.FLASH_RED_EYE;
 
-    /** The mode for for the camera device's flash control */
+    /**
+     * The mode for for the camera device's flash control
+     */
     @IntDef({FLASH_OFF, FLASH_ON, FLASH_TORCH, FLASH_AUTO, FLASH_RED_EYE})
     public @interface Flash {
     }
@@ -82,6 +98,8 @@ public class CameraView extends FrameLayout {
     private boolean mAdjustViewBounds;
 
     private final DisplayOrientationDetector mDisplayOrientationDetector;
+
+    private FaceDetectionCallback faceDetectionCallback;
 
     private final Handler handler = new Handler();
 
@@ -100,7 +118,7 @@ public class CameraView extends FrameLayout {
         final PreviewImpl preview = createPreviewImpl(context);
         mCallbacks = new CallbackBridge();
         if (Build.VERSION.SDK_INT < 21) {
-            mImpl = new Camera1(mCallbacks, preview);
+            mImpl = new Camera1(mCallbacks, preview, faceDetectionCallback);
         } else if (Build.VERSION.SDK_INT < 23) {
             mImpl = new Camera2(mCallbacks, preview, context);
         } else {
@@ -222,6 +240,14 @@ public class CameraView extends FrameLayout {
         }
     }
 
+
+    public void setFaceDetectionCallback(FaceDetectionCallback faceDetectionCallback) {
+        this.faceDetectionCallback = faceDetectionCallback;
+        if (mImpl != null) {
+            this.mImpl.setFaceDetectionCallback(faceDetectionCallback);
+        }
+    }
+
     @Override
     protected Parcelable onSaveInstanceState() {
         SavedState state = new SavedState(super.onSaveInstanceState());
@@ -253,9 +279,9 @@ public class CameraView extends FrameLayout {
     public void start() {
         if (!mImpl.start()) {
             //store the state ,and restore this state after fall back o Camera1
-            Parcelable state=onSaveInstanceState();
+            Parcelable state = onSaveInstanceState();
             // Camera2 uses legacy hardware layer; fall back to Camera1
-            mImpl = new Camera1(mCallbacks, createPreviewImpl(getContext()));
+            mImpl = new Camera1(mCallbacks, createPreviewImpl(getContext()), faceDetectionCallback);
             onRestoreInstanceState(state);
             mImpl.start();
         }
@@ -384,7 +410,7 @@ public class CameraView extends FrameLayout {
             double proportion = ((double) cameraAspectRatio.getX() / cameraAspectRatio.getY());
 
             // Get the proportion of the expected value
-            double expectedProportion = ((double)aspectRatio.getX()/aspectRatio.getY());
+            double expectedProportion = ((double) aspectRatio.getX() / aspectRatio.getY());
 
             // This is the difference by which we filter the closest distance
             double result = Math.abs(expectedProportion - proportion);
@@ -579,6 +605,12 @@ public class CameraView extends FrameLayout {
          */
         public void onPictureTaken(CameraView cameraView, byte[] data) {
         }
+    }
+
+    public interface FaceDetectionCallback {
+        void onFaceDetected();
+
+        void onFaceRemoved();
     }
 
 }
