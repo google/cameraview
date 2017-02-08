@@ -33,6 +33,7 @@ import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
 import android.support.annotation.NonNull;
+import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseIntArray;
 import android.view.Surface;
@@ -276,9 +277,11 @@ class Camera2 extends CameraViewImpl {
     @Override
     boolean setAspectRatio(AspectRatio ratio) {
         // https://github.com/google/cameraview/issues/46
-        chooseCameraIdByFacing();
-        collectCameraInfo();
-        prepareImageReader();
+        if (!TextUtils.isEmpty(mCameraId)) {
+            chooseCameraIdByFacing();
+            collectCameraInfo();
+            prepareImageReader();
+        }
 
         if (ratio == null || ratio.equals(mAspectRatio) ||
                 !mPreviewSizes.ratios().contains(ratio)) {
@@ -404,30 +407,8 @@ class Camera2 extends CameraViewImpl {
                     return true;
                 }
             }
-            // Not found
-            mCameraId = ids[0];
-            mCameraCharacteristics = mCameraManager.getCameraCharacteristics(mCameraId);
-            Integer level = mCameraCharacteristics.get(
-                    CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL);
-            if (level == null
-                    || level == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED
-                    || level == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY) {
-                return false;
-            }
-            Integer internal = mCameraCharacteristics.get(CameraCharacteristics.LENS_FACING);
-            if (internal == null) {
-                throw new NullPointerException("Unexpected state: LENS_FACING null");
-            }
-            for (int i = 0, count = INTERNAL_FACINGS.size(); i < count; i++) {
-                if (INTERNAL_FACINGS.valueAt(i) == internal) {
-                    mFacing = INTERNAL_FACINGS.keyAt(i);
-                    return true;
-                }
-            }
-            // The operation can reach here when the only camera device is an external one.
-            // We treat it as facing back.
-            mFacing = Constants.FACING_BACK;
-            return true;
+
+            return false;
         } catch (CameraAccessException e) {
             throw new RuntimeException("Failed to get a list of camera devices", e);
         }
