@@ -54,5 +54,6 @@
             -->
             <enum name="redEye" value="4"/>
         </attr>
+        <attr name="zoom" format="string"/>
     </declare-styleable>
 </resources>

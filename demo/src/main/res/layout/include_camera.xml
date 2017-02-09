@@ -11,16 +11,17 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 -->
-<FrameLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <com.google.android.cameraview.CameraView
         android:id="@+id/camera"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:adjustViewBounds="true"/>
+        android:adjustViewBounds="true"
+        app:zoom="2.2"/>
 
     <android.support.v7.widget.Toolbar
         android:id="@+id/toolbar"

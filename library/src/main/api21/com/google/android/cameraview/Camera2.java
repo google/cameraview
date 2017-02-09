@@ -19,6 +19,7 @@ package com.google.android.cameraview;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.ImageFormat;
+import android.graphics.Rect;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -93,6 +94,7 @@ class Camera2 extends CameraViewImpl {
             mCaptureSession = session;
             updateAutoFocus();
             updateFlash();
+            updateZoom();
             try {
                 mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(),
                         mCaptureCallback, null);
@@ -182,6 +184,8 @@ class Camera2 extends CameraViewImpl {
     private boolean mAutoFocus;
 
     private int mFlash;
+
+    private float mZoom = 1.f;
 
     private int mDisplayOrientation;
 
@@ -318,6 +322,38 @@ class Camera2 extends CameraViewImpl {
     @Override
     int getFlash() {
         return mFlash;
+    }
+
+    @Override
+    void setZoom(float zoom) {
+        if (mZoom == zoom) {
+            return;
+        }
+
+        float saved = mZoom;
+        mZoom = zoom;
+        if (mCameraCharacteristics != null) {
+            if (updateZoom()) {
+                try {
+                    mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(),
+                            mCaptureCallback, null);
+                } catch (CameraAccessException e) {
+                    mZoom = saved; // Revert
+                }
+            }
+        }
+    }
+
+    @Override
+    float getZoom() {
+        return mZoom;
+    }
+
+    @Override
+    float getMaxZoom() {
+        Float maxZoom = mCameraCharacteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
+        if (maxZoom == null) return 1.f;
+        return maxZoom;
     }
 
     @Override
@@ -551,6 +587,27 @@ class Camera2 extends CameraViewImpl {
         }
     }
 
+    boolean updateZoom(){
+        Float maxZoom = mCameraCharacteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
+        if (maxZoom == null) return false;
+
+        Rect m = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+        if (m == null) return false;
+
+        if (mZoom < 1.f) mZoom = 1.f;
+        if (mZoom > maxZoom) mZoom = maxZoom;
+        if (mPreviewRequestBuilder == null) return false;
+        if (mCaptureSession == null) return false;
+
+        int cropW = (m.width() - (int)((float)m.width() / mZoom)) / 2;
+        int cropH = (m.height() - (int)((float)m.height() / mZoom)) / 2;
+
+        Rect zoomRect = new Rect(cropW, cropH, m.width() - cropW, m.height() - cropH);
+        mPreviewRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
+
+        return true;
+    }
+
     /**
      * Locks the focus as the first step for a still image capture.
      */
@@ -636,6 +693,7 @@ class Camera2 extends CameraViewImpl {
             mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, null);
             updateAutoFocus();
             updateFlash();
+            updateZoom();
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
                     CaptureRequest.CONTROL_AF_TRIGGER_IDLE);
             mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(), mCaptureCallback,

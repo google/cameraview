@@ -16,6 +16,7 @@
     <public name="aspectRatio" type="attr"/>
     <public name="autoFocus" type="attr"/>
     <public name="flash" type="attr"/>
+    <public name="zoom" type="attr"/>
 
     <public name="Widget.CameraView" type="style"/>
 </resources>

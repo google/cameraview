@@ -65,6 +65,8 @@ class Camera1 extends CameraViewImpl {
 
     private int mFlash;
 
+    private float mZoom = 1.f;
+
     private int mDisplayOrientation;
 
     Camera1(Callback callback, PreviewImpl preview) {
@@ -208,6 +210,31 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
+    void setZoom(float zoom) {
+        if (zoom == mZoom) {
+            return;
+        }
+        if (setZoomInternal(zoom)) {
+            mCamera.setParameters(mCameraParameters);
+        }
+    }
+
+    @Override
+    float getZoom() {
+        return mZoom;
+    }
+
+    @Override
+    float getMaxZoom() {
+        if (mCameraParameters == null) return 1.f;
+
+        List<Integer> zoomRatios = mCameraParameters.getZoomRatios();
+        if (zoomRatios.isEmpty()) return 1.f;
+
+        return zoomRatios.get(zoomRatios.size()-1) / 100.f;
+    }
+
+    @Override
     void takePicture() {
         if (!isCameraOpened()) {
             throw new IllegalStateException(
@@ -327,6 +354,7 @@ class Camera1 extends CameraViewImpl {
             mCameraParameters.setRotation(calcCameraRotation(mDisplayOrientation));
             setAutoFocusInternal(mAutoFocus);
             setFlashInternal(mFlash);
+            setZoomInternal(mZoom);
             mCamera.setParameters(mCameraParameters);
             if (mShowingPreview) {
                 mCamera.startPreview();
@@ -420,6 +448,43 @@ class Camera1 extends CameraViewImpl {
             return false;
         } else {
             mFlash = flash;
+            return false;
+        }
+    }
+
+    private int getZoomIdxForZoomFactor(float zoom){
+        List<Integer> zoomRatios = mCameraParameters.getZoomRatios();
+
+        int zoomRatioFormat = (int)(zoom * 100);
+
+        int len = zoomRatios.size();
+        int possibleIdx = 0;
+        int minDiff = Integer.MAX_VALUE;
+        int tmp;
+        for (int i=0; i<len; ++i){
+            tmp = Math.abs(zoomRatioFormat - zoomRatios.get(i));
+            if (tmp < minDiff){
+                minDiff = tmp;
+                possibleIdx = i;
+            }
+        }
+        return possibleIdx;
+    }
+
+    /**
+     * @return {@code true} if {@link #mCameraParameters} was modified.
+     */
+    private boolean setZoomInternal(float zoom) {
+        if (isCameraOpened()) {
+            if (!mCameraParameters.isZoomSupported()) return false;
+
+            int camera1Zoom = getZoomIdxForZoomFactor(zoom);
+            mCameraParameters.setZoom(camera1Zoom);
+            mZoom = zoom;
+            return true;
+
+        } else {
+            mZoom = zoom;
             return false;
         }
     }

@@ -12,14 +12,16 @@
     limitations under the License.
 -->
 <FrameLayout android:id="@+id/container"
-             xmlns:android="http://schemas.android.com/apk/res/android"
-             android:layout_width="match_parent"
-             android:layout_height="match_parent">
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <com.google.android.cameraview.CameraView
         android:id="@+id/camera"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:keepScreenOn="true"/>
+        android:keepScreenOn="true"
+        app:zoom="1"/>
 
 </FrameLayout>

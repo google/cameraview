@@ -111,6 +111,17 @@ public class CameraView extends FrameLayout {
         }
         setAutoFocus(a.getBoolean(R.styleable.CameraView_autoFocus, true));
         setFlash(a.getInt(R.styleable.CameraView_flash, Constants.FLASH_AUTO));
+        String zoomString = a.getString(R.styleable.CameraView_zoom);
+        if (zoomString != null) {
+            try {
+                setZoom(Float.valueOf(zoomString));
+            }catch(NumberFormatException e){
+                setZoom(1.f);
+            }
+        }else{
+            setZoom(1.f);
+        }
+
         a.recycle();
         // Display orientation detector
         mDisplayOrientationDetector = new DisplayOrientationDetector(context) {
@@ -207,6 +218,7 @@ public class CameraView extends FrameLayout {
         state.ratio = getAspectRatio();
         state.autoFocus = getAutoFocus();
         state.flash = getFlash();
+        state.zoom = getZoom();
         return state;
     }
 
@@ -222,6 +234,7 @@ public class CameraView extends FrameLayout {
         setAspectRatio(ss.ratio);
         setAutoFocus(ss.autoFocus);
         setFlash(ss.flash);
+        setZoom(ss.zoom);
     }
 
     /**
@@ -385,6 +398,18 @@ public class CameraView extends FrameLayout {
         return mImpl.getFlash();
     }
 
+    public void setZoom(float zoom) {
+        mImpl.setZoom(zoom);
+    }
+
+    public float getZoom() {
+        return mImpl.getZoom();
+    }
+
+    public float getMaxZoom() {
+        return mImpl.getMaxZoom();
+    }
+
     /**
      * Take a picture. The result will be returned to
      * {@link Callback#onPictureTaken(CameraView, byte[])}.
@@ -452,6 +477,8 @@ public class CameraView extends FrameLayout {
         @Flash
         int flash;
 
+        float zoom;
+
         @SuppressWarnings("WrongConstant")
         public SavedState(Parcel source, ClassLoader loader) {
             super(source);
@@ -459,6 +486,7 @@ public class CameraView extends FrameLayout {
             ratio = source.readParcelable(loader);
             autoFocus = source.readByte() != 0;
             flash = source.readInt();
+            zoom = source.readFloat();
         }
 
         public SavedState(Parcelable superState) {
@@ -472,6 +500,7 @@ public class CameraView extends FrameLayout {
             out.writeParcelable(ratio, 0);
             out.writeByte((byte) (autoFocus ? 1 : 0));
             out.writeInt(flash);
+            out.writeFloat(zoom);
         }
 
         public static final Parcelable.Creator<SavedState> CREATOR
