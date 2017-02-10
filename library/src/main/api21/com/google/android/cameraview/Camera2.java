@@ -660,6 +660,20 @@ class Camera2 extends CameraViewImpl {
                             CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
                     break;
             }
+
+            Float maxZoom = mCameraCharacteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
+            Rect m = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+            if (m != null && maxZoom != null) {
+                if (mZoom < 1.f) mZoom = 1.f;
+                if (mZoom > maxZoom) mZoom = maxZoom;
+
+                int cropW = (m.width() - (int) ((float) m.width() / mZoom)) / 2;
+                int cropH = (m.height() - (int) ((float) m.height() / mZoom)) / 2;
+
+                Rect zoomRect = new Rect(cropW, cropH, m.width() - cropW, m.height() - cropH);
+                captureRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
+            }
+
             // Calculate JPEG orientation.
             @SuppressWarnings("ConstantConditions")
             int sensorOrientation = mCameraCharacteristics.get(
@@ -676,12 +690,17 @@ class Camera2 extends CameraViewImpl {
                         public void onCaptureCompleted(@NonNull CameraCaptureSession session,
                                 @NonNull CaptureRequest request,
                                 @NonNull TotalCaptureResult result) {
-                            unlockFocus();
+                            //unlockFocus();
                         }
                     }, null);
         } catch (CameraAccessException e) {
             Log.e(TAG, "Cannot capture a still picture.", e);
         }
+    }
+
+    void resumePreview(){
+        if (isCameraOpened())
+            unlockFocus();
     }
 
     /**

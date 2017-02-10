@@ -259,9 +259,16 @@ class Camera1 extends CameraViewImpl {
             public void onPictureTaken(byte[] data, Camera camera) {
                 mCallback.onPictureTaken(data);
                 camera.cancelAutoFocus();
-                camera.startPreview();
+                //camera.startPreview();
             }
         });
+    }
+
+    @Override
+    void resumePreview() {
+        if (isCameraOpened()){
+            mCamera.startPreview();
+        }
     }
 
     @Override

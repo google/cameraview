@@ -418,6 +418,10 @@ public class CameraView extends FrameLayout {
         mImpl.takePicture();
     }
 
+    public void resumePreview() {
+        mImpl.resumePreview();
+    }
+
     private class CallbackBridge implements CameraViewImpl.Callback {
 
         private final ArrayList<Callback> mCallbacks = new ArrayList<>();
