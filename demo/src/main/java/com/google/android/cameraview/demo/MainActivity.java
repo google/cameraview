@@ -247,6 +247,7 @@ public class MainActivity extends AppCompatActivity implements
         @Override
         public void onPictureTaken(CameraView cameraView, final byte[] data) {
             Log.d(TAG, "onPictureTaken " + data.length);
+            cameraView.resumePreview();
             Toast.makeText(cameraView.getContext(), R.string.picture_taken, Toast.LENGTH_SHORT)
                     .show();
             getBackgroundHandler().post(new Runnable() {
