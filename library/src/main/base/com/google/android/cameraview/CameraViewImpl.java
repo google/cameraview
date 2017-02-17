@@ -69,6 +69,8 @@ abstract class CameraViewImpl {
 
     abstract void setDisplayOrientation(int displayOrientation);
 
+    public abstract int getOrientation();
+
     interface Callback {
 
         void onCameraOpened();
@@ -78,5 +80,7 @@ abstract class CameraViewImpl {
         void onPictureTaken(byte[] data);
 
     }
+
+    abstract void setFaceDetectionCallback(CameraView.FaceDetectionCallback callback);
 
 }
