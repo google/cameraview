@@ -336,10 +336,15 @@ class Camera1 extends CameraViewImpl {
         mCamera.setDisplayOrientation(calcCameraRotation(mDisplayOrientation));
 
         // start face detection only *after* preview has started
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-            if (mCameraParameters.getMaxNumDetectedFaces() > 0) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH
+                && faceDetectionCallback != null
+                && mCameraParameters.getMaxNumDetectedFaces() > 0) {
                 // camera supports face detection, so can start it:
+            try {
                 mCamera.startFaceDetection();
+            } catch (Exception e) {
+                Log.e(TAG, "openCamera: ", e);
+                faceDetectionCallback.onError(e);
             }
         }
 

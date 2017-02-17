@@ -611,6 +611,8 @@ public class CameraView extends FrameLayout {
         void onFaceDetected();
 
         void onFaceRemoved();
+
+        void onError(Exception e);
     }
 
 }
