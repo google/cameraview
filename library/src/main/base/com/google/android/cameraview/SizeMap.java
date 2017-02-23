@@ -25,7 +25,7 @@ import java.util.TreeSet;
 /**
  * A collection class that automatically groups {@link Size}s by their {@link AspectRatio}s.
  */
-class SizeMap {
+public class SizeMap {
 
     private final ArrayMap<AspectRatio, SortedSet<Size>> mRatios = new ArrayMap<>();
 
@@ -63,19 +63,19 @@ class SizeMap {
         mRatios.remove(ratio);
     }
 
-    Set<AspectRatio> ratios() {
+    public Set<AspectRatio> ratios() {
         return mRatios.keySet();
     }
 
-    SortedSet<Size> sizes(AspectRatio ratio) {
+    public SortedSet<Size> sizes(AspectRatio ratio) {
         return mRatios.get(ratio);
     }
 
-    void clear() {
+    public void clear() {
         mRatios.clear();
     }
 
-    boolean isEmpty() {
+    public boolean isEmpty() {
         return mRatios.isEmpty();
     }
 
