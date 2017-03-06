@@ -19,6 +19,7 @@ package com.google.android.cameraview;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.Rect;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -383,6 +384,27 @@ public class CameraView extends FrameLayout {
     public int getFlash() {
         //noinspection WrongConstant
         return mImpl.getFlash();
+    }
+
+    /**
+     * Sets the metering area used for AF and AE.
+     *
+     * The metering area is a rectangle with specified weight.
+     * The direction is relative to the sensor orientation, that is, what the sensor sees.
+     * The direction is not affected by the rotation or mirroring of setDisplayOrientation(int).
+     * Coordinates of the rectangle range from -1000 to 1000. (-1000, -1000) is the upper left
+     * point, (1000, 1000) is the lower right point.
+     * The width and height of metering areas cannot be 0 or negative.
+     *
+     * @param rect AF and AE rectangular metering area.
+     */
+
+    public void setMeteringRect(Rect rect) {
+        mImpl.setMeteringRect(rect);
+    }
+
+    public Rect getMeteringRect() {
+        return mImpl.getMeteringRect();
     }
 
     /**
