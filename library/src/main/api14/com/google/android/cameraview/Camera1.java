@@ -299,7 +299,16 @@ class Camera1 extends CameraViewImpl {
             return false;
         }
 
-        mCamera = Camera.open(mCameraId);
+        try {
+            mCamera = Camera.open(mCameraId);
+        }
+        catch(RuntimeException ex) {
+            mCamera = null;
+            mCallback.onCameraNotAvailable();
+            return false;
+        }
+
+        assert(mCamera != null);
         mCameraParameters = mCamera.getParameters();
         // Supported preview sizes
         mPreviewSizes.clear();
