@@ -17,12 +17,13 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:gravity="center_horizontal"
     tools:context=".MainActivity">
 
     <include
         layout="@layout/include_camera"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_width="300dp"
+        android:layout_height="300dp"/>
 
     <include
         layout="@layout/include_control"
