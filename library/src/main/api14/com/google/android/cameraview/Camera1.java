@@ -21,6 +21,7 @@ import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.os.Build;
 import android.support.v4.util.SparseArrayCompat;
+import android.util.Log;
 import android.view.SurfaceHolder;
 
 import java.io.IOException;
@@ -30,6 +31,8 @@ import java.util.SortedSet;
 
 @SuppressWarnings("deprecation")
 class Camera1 extends CameraViewImpl {
+
+    private static final String TAG = "Camera1";
 
     private static final int INVALID_CAMERA_ID = -1;
 
@@ -227,14 +230,18 @@ class Camera1 extends CameraViewImpl {
     }
 
     void takePictureInternal() {
-        mCamera.takePicture(null, null, null, new Camera.PictureCallback() {
-            @Override
-            public void onPictureTaken(byte[] data, Camera camera) {
-                mCallback.onPictureTaken(data);
-                camera.cancelAutoFocus();
-                camera.startPreview();
-            }
-        });
+        try {
+            mCamera.takePicture(null, null, null, new Camera.PictureCallback() {
+                @Override
+                public void onPictureTaken(byte[] data, Camera camera) {
+                    mCallback.onPictureTaken(data);
+                    camera.cancelAutoFocus();
+                    camera.startPreview();
+                }
+            });
+        } catch (RuntimeException re) {
+            Log.e(TAG, "takePicture failed", re);
+        }
     }
 
     @Override
