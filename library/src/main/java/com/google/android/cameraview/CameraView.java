@@ -88,6 +88,11 @@ public class CameraView extends FrameLayout {
     @SuppressWarnings("WrongConstant")
     public CameraView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+        if (isInEditMode()){
+            mCallbacks = null;
+            mDisplayOrientationDetector = null;
+            return;
+        }
         // Internal setup
         final PreviewImpl preview = createPreviewImpl(context);
         mCallbacks = new CallbackBridge();
@@ -146,17 +151,25 @@ public class CameraView extends FrameLayout {
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        mDisplayOrientationDetector.enable(ViewCompat2.getDisplay(this));
+        if (!isInEditMode()) {
+            mDisplayOrientationDetector.enable(ViewCompat2.getDisplay(this));
+        }
     }
 
     @Override
     protected void onDetachedFromWindow() {
-        mDisplayOrientationDetector.disable();
+        if (!isInEditMode()) {
+            mDisplayOrientationDetector.disable();
+        }
         super.onDetachedFromWindow();
     }
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        if (isInEditMode()){
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+            return;
+        }
         // Handle android:adjustViewBounds
         if (mAdjustViewBounds) {
             if (!isCameraOpened()) {

@@ -27,6 +27,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 
 @SuppressWarnings("deprecation")
 class Camera1 extends CameraViewImpl {
@@ -44,6 +46,8 @@ class Camera1 extends CameraViewImpl {
     }
 
     private int mCameraId;
+
+    private final AtomicBoolean isPictureCaptureInProgress = new AtomicBoolean(false);
 
     Camera mCamera;
 
@@ -254,14 +258,17 @@ class Camera1 extends CameraViewImpl {
     }
 
     void takePictureInternal() {
-        mCamera.takePicture(null, null, null, new Camera.PictureCallback() {
-            @Override
-            public void onPictureTaken(byte[] data, Camera camera) {
-                mCallback.onPictureTaken(data);
-                camera.cancelAutoFocus();
+        if (!isPictureCaptureInProgress.getAndSet(true)) {
+            mCamera.takePicture(null, null, null, new Camera.PictureCallback() {
+                @Override
+                public void onPictureTaken(byte[] data, Camera camera) {
+                    isPictureCaptureInProgress.set(false);
+                    mCallback.onPictureTaken(data);
+                    camera.cancelAutoFocus();
                 //camera.startPreview();
-            }
-        });
+                }
+            });
+        }
     }
 
     @Override
