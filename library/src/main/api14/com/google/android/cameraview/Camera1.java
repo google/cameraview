@@ -30,6 +30,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 
 @SuppressWarnings("deprecation")
 class Camera1 extends CameraViewImpl {
@@ -47,6 +49,8 @@ class Camera1 extends CameraViewImpl {
     }
 
     private int mCameraId;
+
+    private final AtomicBoolean isPictureCaptureInProgress = new AtomicBoolean(false);
 
     Camera mCamera;
 

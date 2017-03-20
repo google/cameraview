@@ -42,6 +42,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.TreeSet;
 
 import static android.hardware.camera2.params.MeteringRectangle.METERING_WEIGHT_MAX;
 
@@ -56,6 +57,16 @@ class Camera2 extends CameraViewImpl {
         INTERNAL_FACINGS.put(Constants.FACING_BACK, CameraCharacteristics.LENS_FACING_BACK);
         INTERNAL_FACINGS.put(Constants.FACING_FRONT, CameraCharacteristics.LENS_FACING_FRONT);
     }
+
+    /**
+     * Max preview width that is guaranteed by Camera2 API
+     */
+    private static final int MAX_PREVIEW_WIDTH = 1920;
+
+    /**
+     * Max preview height that is guaranteed by Camera2 API
+     */
+    private static final int MAX_PREVIEW_HEIGHT = 1080;
 
     private final CameraManager mCameraManager;
 
@@ -530,15 +541,24 @@ class Camera2 extends CameraViewImpl {
             surfaceLonger = surfaceWidth;
             surfaceShorter = surfaceHeight;
         }
-        SortedSet<Size> candidates = mPreviewSizes.sizes(mAspectRatio);
-        // Pick the smallest of those big enough.
-        for (Size size : candidates) {
+        SortedSet<Size> allCandidates = mPreviewSizes.sizes(mAspectRatio);
+
+        // Eliminate candidates that are bigger than Camera2 PREVIEW guarantees
+        SortedSet<Size> guaranteedCandidates = new TreeSet<>();
+        for (Size size: allCandidates) {
+            if (size.getWidth() <= MAX_PREVIEW_WIDTH && size.getHeight() <= MAX_PREVIEW_HEIGHT) {
+                guaranteedCandidates.add(size);
+            }
+        }
+
+        // Pick the smallest of those big enough
+        for (Size size : guaranteedCandidates) {
             if (size.getWidth() >= surfaceLonger && size.getHeight() >= surfaceShorter) {
                 return size;
             }
         }
         // If no size is big enough, pick the largest one.
-        return candidates.last();
+        return guaranteedCandidates.last();
     }
 
     /**
