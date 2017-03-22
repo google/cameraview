@@ -31,6 +31,7 @@ import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.util.Log;
 import android.util.SparseIntArray;
 import android.view.Surface;
@@ -156,19 +157,26 @@ class Camera2 extends CameraViewImpl {
 
         @Override
         public void onImageAvailable(ImageReader reader) {
-            try (Image image = reader.acquireNextImage()) {
-                Image.Plane[] planes = image.getPlanes();
-                if (planes.length > 0) {
-                    ByteBuffer buffer = planes[0].getBuffer();
-                    byte[] data = new byte[buffer.remaining()];
-                    buffer.get(data);
-                    mCallback.onPictureTaken(data);
-                }
+            byte[] data = getByteDataFromImageReader(reader);
+            if (data != null) {
+                mCallback.onPictureTaken(data);
             }
         }
-
     };
 
+    private final ImageReader.OnImageAvailableListener mOnPreviewImageAvailableListener
+            = new ImageReader.OnImageAvailableListener() {
+
+        @Override
+        public void onImageAvailable(ImageReader reader) {
+            byte[] data = getByteDataFromImageReader(reader);
+            if (data != null) {
+                mCallback.onPreviewFrame(data, reader.getImageFormat(),
+                        reader.getWidth(),
+                        reader.getHeight());
+            }
+        }
+    };
 
     private String mCameraId;
 
@@ -181,6 +189,8 @@ class Camera2 extends CameraViewImpl {
     CaptureRequest.Builder mPreviewRequestBuilder;
 
     private ImageReader mImageReader;
+
+    private ImageReader mCallbackImageDataReader;
 
     private final SizeMap mPreviewSizes = new SizeMap();
 
@@ -231,6 +241,11 @@ class Camera2 extends CameraViewImpl {
         if (mImageReader != null) {
             mImageReader.close();
             mImageReader = null;
+        }
+
+        if (mCallbackImageDataReader != null) {
+            mCallbackImageDataReader.close();
+            mCallbackImageDataReader = null;
         }
     }
 
@@ -435,10 +450,48 @@ class Camera2 extends CameraViewImpl {
 
     private void prepareImageReader() {
         Size largest = mPictureSizes.sizes(mAspectRatio).last();
-        mImageReader = ImageReader.newInstance(largest.getWidth(), largest.getHeight(),
+        initImageReader(largest.getWidth(), largest.getHeight());
+
+        Size size = chooseOptimalSize();
+        initCallbackImageDataReader(size.getWidth(), size.getHeight());
+    }
+
+    private void initImageReader(int width, int height){
+        mImageReader = ImageReader.newInstance(width, height,
                 ImageFormat.JPEG, /* maxImages */ 2);
         mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, null);
     }
+
+    private void initCallbackImageDataReader(int width, int height) {
+
+        if (mCallbackImageDataReader != null) {
+            mCallbackImageDataReader.close();
+        }
+
+        mCallbackImageDataReader = ImageReader.newInstance(width, height,
+                ImageFormat.NV21, /* maxImages */ 1);
+        mCallbackImageDataReader.setOnImageAvailableListener(mOnPreviewImageAvailableListener, null);
+    }
+
+    /**
+     * Extract the byte data from the ImageReader
+     * @param reader
+     * @return byte array or null if failed
+     */
+    @Nullable
+    private byte[] getByteDataFromImageReader(@NonNull ImageReader reader) {
+        byte[] data = null;
+        try (Image image = reader.acquireNextImage()) {
+            Image.Plane[] planes = image.getPlanes();
+            if (planes.length > 0) {
+                ByteBuffer buffer = planes[0].getBuffer();
+                data = new byte[buffer.remaining()];
+                buffer.get(data);
+            }
+        }
+        return data;
+    }
+
 
     /**
      * <p>Starts opening a camera device.</p>
@@ -463,11 +516,14 @@ class Camera2 extends CameraViewImpl {
         }
         Size previewSize = chooseOptimalSize();
         mPreview.setBufferSize(previewSize.getWidth(), previewSize.getHeight());
+
         Surface surface = mPreview.getSurface();
         try {
             mPreviewRequestBuilder = mCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             mPreviewRequestBuilder.addTarget(surface);
-            mCamera.createCaptureSession(Arrays.asList(surface, mImageReader.getSurface()),
+            mPreviewRequestBuilder.addTarget(mCallbackImageDataReader.getSurface());
+            mCamera.createCaptureSession(Arrays.asList(surface, mImageReader.getSurface(),
+                    mCallbackImageDataReader.getSurface()),
                     mSessionCallback, null);
         } catch (CameraAccessException e) {
             throw new RuntimeException("Failed to start camera session");
