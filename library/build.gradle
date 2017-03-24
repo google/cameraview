@@ -62,7 +62,7 @@ publishing {
     publications {
         aar(MavenPublication) {
             groupId 'premise.android.cameraview'
-            version '0.0.1'
+            version '0.1.1'
             artifactId 'cameraview'
 
             artifact("$buildDir/outputs/aar/${project.getName()}-release.aar")

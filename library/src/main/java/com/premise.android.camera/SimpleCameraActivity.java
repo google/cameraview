@@ -30,12 +30,10 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaActionSound;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.StringRes;
 import android.support.design.widget.FloatingActionButton;
@@ -75,6 +73,8 @@ public class SimpleCameraActivity extends AppCompatActivity implements
         AspectRatioFragment.Listener {
 
     private static final String TAG = "SimpleCameraActivity";
+
+    public static final String KEY_OUTPUT_PATH = "key_output_path";
 
     private static final boolean DO_ANIM = true;
 
@@ -116,7 +116,7 @@ public class SimpleCameraActivity extends AppCompatActivity implements
 
     private Bitmap mBitmap;
 
-    private Uri mOutputUri;
+    private String mOutputPath;
 
     private boolean mIsDestroyed;
 
@@ -154,8 +154,8 @@ public class SimpleCameraActivity extends AppCompatActivity implements
             actionBar.setDisplayShowTitleEnabled(false);
         }
         initSound();
-        if (getIntent() != null && getIntent().hasExtra(MediaStore.EXTRA_OUTPUT)) {
-            mOutputUri = getIntent().getParcelableExtra(MediaStore.EXTRA_OUTPUT);
+        if (getIntent() != null && getIntent().hasExtra(KEY_OUTPUT_PATH)) {
+            mOutputPath = getIntent().getStringExtra(KEY_OUTPUT_PATH);
         } else {
             throw new IllegalArgumentException("SimpleCameraActivity must be passed MediaStore.EXTRA_OUTPUT");
         }
@@ -317,12 +317,14 @@ public class SimpleCameraActivity extends AppCompatActivity implements
             getBackgroundHandler().post(new Runnable() {
                 @Override
                 public void run() {
-                    File file = new File(mOutputUri.getPath());
+
+                    if (isActivityDestroyed()) { //check: android image processing takes time
+                        return;
+                    }
                     OutputStream os = null;
+                    File file = null;
                     try {
-                        if (isActivityDestroyed()) { //check: android image processing takes time
-                            return;
-                        }
+                        file = new File(mOutputPath);
                         os = new FileOutputStream(file);
                         os.write(data);  //
                         os.close();
@@ -348,12 +350,11 @@ public class SimpleCameraActivity extends AppCompatActivity implements
                             }
                         });
                     } catch (IOException e) {
-                        Log.w(TAG, "Cannot write to " + file, e);
-                        Toast.makeText(SimpleCameraActivity.this,
-                                R.string.camera_failed_to_capture_image,
-                                Toast.LENGTH_SHORT).show();
-                    } catch (InterruptedException e) {
-                        Log.w(TAG, "Interrupted while writing image to disk", e);
+                        Log.e(TAG, "(a) Cannot write to " + file, e);
+                        showErrorToast();
+                    } catch (Exception e) {
+                        Log.e(TAG, "(b) Exception occurred while writing image to disk", e);
+                        showErrorToast();
                     } finally {
                         if (os != null) {
                             try {
@@ -368,6 +369,12 @@ public class SimpleCameraActivity extends AppCompatActivity implements
         }
 
     };
+
+    private void showErrorToast() {
+        Toast.makeText(SimpleCameraActivity.this,
+                R.string.camera_failed_to_capture_image,
+                Toast.LENGTH_SHORT).show();
+    }
 
     public static class ConfirmationDialogFragment extends DialogFragment {
 
