@@ -222,26 +222,29 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void repositionCaptureFab() {
-        if((mRootView == null) || (mCameraView == null) || (mCaptureFab == null)) {
+        if ((mRootView == null) || (mCameraView == null) || (mCaptureFab == null)) {
             return;
         }
         mCaptureFab.post(new Runnable() {
             @Override
             public void run() {
-                RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams)mCaptureFab.getLayoutParams();
+                RelativeLayout.LayoutParams layoutParams =
+                        (RelativeLayout.LayoutParams) mCaptureFab.getLayoutParams();
 
                 DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
-                int minMargin = (int)(15 * displayMetrics.density + 0.5f);
+                int minMargin = (int) (15 * displayMetrics.density + 0.5f);
 
-                if(displayMetrics.widthPixels > displayMetrics.heightPixels) {
-                    int rightMargin = ((mRootView.getWidth() - mCameraView.getWidth()) / 2) - (mCaptureFab.getWidth() / 2);
-                    if(rightMargin < minMargin) {
+                if (displayMetrics.widthPixels > displayMetrics.heightPixels) {
+                    int rightMargin = ((mRootView.getWidth() - mCameraView.getWidth()) / 2) -
+                            (mCaptureFab.getWidth() / 2);
+                    if (rightMargin < minMargin) {
                         rightMargin = minMargin;
                     }
                     layoutParams.rightMargin = rightMargin;
                 } else {
-                    int bottomMargin = ((mRootView.getHeight() - mCameraView.getHeight()) / 2) - (mCaptureFab.getHeight() / 2);
-                    if(bottomMargin < minMargin) {
+                    int bottomMargin = ((mRootView.getHeight() - mCameraView.getHeight()) / 2) -
+                            (mCaptureFab.getHeight() / 2);
+                    if (bottomMargin < minMargin) {
                         bottomMargin = minMargin;
                     }
                     layoutParams.bottomMargin = bottomMargin;
