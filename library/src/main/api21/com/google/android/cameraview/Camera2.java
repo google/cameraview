@@ -39,8 +39,8 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.SortedSet;
-import java.util.TreeSet;
 
+@SuppressWarnings("MissingPermission")
 @TargetApi(21)
 class Camera2 extends CameraViewImpl {
 
@@ -417,10 +417,19 @@ class Camera2 extends CameraViewImpl {
         }
         mPreviewSizes.clear();
         for (android.util.Size size : map.getOutputSizes(mPreview.getOutputClass())) {
-            mPreviewSizes.add(new Size(size.getWidth(), size.getHeight()));
+            int width = size.getWidth();
+            int height = size.getHeight();
+            if (width <= MAX_PREVIEW_WIDTH && height <= MAX_PREVIEW_HEIGHT) {
+                mPreviewSizes.add(new Size(width, height));
+            }
         }
         mPictureSizes.clear();
         collectPictureSizes(mPictureSizes, map);
+        for (AspectRatio ratio : mPreviewSizes.ratios()) {
+            if (!mPictureSizes.ratios().contains(ratio)) {
+                mPreviewSizes.remove(ratio);
+            }
+        }
 
         if (!mPreviewSizes.ratios().contains(mAspectRatio)) {
             mAspectRatio = mPreviewSizes.ratios().iterator().next();
@@ -490,24 +499,16 @@ class Camera2 extends CameraViewImpl {
             surfaceLonger = surfaceWidth;
             surfaceShorter = surfaceHeight;
         }
-        SortedSet<Size> allCandidates = mPreviewSizes.sizes(mAspectRatio);
-
-        // Eliminate candidates that are bigger than Camera2 PREVIEW guarantees
-        SortedSet<Size> guaranteedCandidates = new TreeSet<>();
-        for (Size size: allCandidates) {
-            if (size.getWidth() <= MAX_PREVIEW_WIDTH && size.getHeight() <= MAX_PREVIEW_HEIGHT) {
-                guaranteedCandidates.add(size);
-            }
-        }
+        SortedSet<Size> candidates = mPreviewSizes.sizes(mAspectRatio);
 
         // Pick the smallest of those big enough
-        for (Size size : guaranteedCandidates) {
+        for (Size size : candidates) {
             if (size.getWidth() >= surfaceLonger && size.getHeight() >= surfaceShorter) {
                 return size;
             }
         }
         // If no size is big enough, pick the largest one.
-        return guaranteedCandidates.last();
+        return candidates.last();
     }
 
     /**
