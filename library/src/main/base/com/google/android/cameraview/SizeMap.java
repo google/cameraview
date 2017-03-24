@@ -70,4 +70,7 @@ class SizeMap {
         return mRatios.isEmpty();
     }
 
+    public void remove(AspectRatio ratio) {
+        mRatios.remove(ratio);
+    }
 }
