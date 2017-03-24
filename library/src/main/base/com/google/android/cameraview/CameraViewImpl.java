@@ -16,6 +16,7 @@
 
 package com.google.android.cameraview;
 
+import android.graphics.Rect;
 import android.view.View;
 
 import java.util.Set;
@@ -68,6 +69,10 @@ abstract class CameraViewImpl {
     abstract void takePicture();
 
     abstract void setDisplayOrientation(int displayOrientation);
+
+    public abstract void setMeteringRect(Rect rect);
+
+    public abstract Rect getMeteringRect();
 
     interface Callback {
 
