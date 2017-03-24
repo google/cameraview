@@ -502,11 +502,11 @@ public class SimpleCameraActivity extends AppCompatActivity implements
      * Embedded in this layout, just finish activity
      * @param view
      */
-    void onBackClicked(View view) {
+    public void onBackClicked(View view) {
         finish();
     }
 
-    void onCameraButtonClicked(View view) {
+    public void onCameraButtonClicked(View view) {
         if (view.getId() == R.id.take_picture) {
             if (mBitmap != null) {
                 setResult(RESULT_OK);
