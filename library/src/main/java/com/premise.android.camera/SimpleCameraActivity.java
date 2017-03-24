@@ -120,20 +120,6 @@ public class SimpleCameraActivity extends AppCompatActivity implements
 
     private boolean mIsDestroyed;
 
-    private View.OnClickListener mOnClickListener = new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            if (v.getId() == R.id.take_picture) {
-                if (mBitmap != null) {
-                    setResult(RESULT_OK);
-                    finish();
-                } else {
-                    takePhoto();
-                }
-            }
-        }
-    };
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -144,7 +130,6 @@ public class SimpleCameraActivity extends AppCompatActivity implements
             mCameraView.addCallback(mCallback);
         }
         mTakePicButton = (FloatingActionButton) findViewById(R.id.take_picture);
-        mTakePicButton.setOnClickListener(mOnClickListener);
         mCapturedImageView = (ImageView)findViewById(R.id.captured_camera_image);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -157,7 +142,7 @@ public class SimpleCameraActivity extends AppCompatActivity implements
         if (getIntent() != null && getIntent().hasExtra(KEY_OUTPUT_PATH)) {
             mOutputPath = getIntent().getStringExtra(KEY_OUTPUT_PATH);
         } else {
-            throw new IllegalArgumentException("SimpleCameraActivity must be passed MediaStore.EXTRA_OUTPUT");
+            throw new IllegalArgumentException("SimpleCameraActivity must be passed SimpleCameraActivity.KEY_OUTPUT_PATH");
         }
     }
 
@@ -479,8 +464,6 @@ public class SimpleCameraActivity extends AppCompatActivity implements
             return;
         }
 
-        // previously visible view
-
         // get the center for the clipping circle
         int cx = mCameraView.getMeasuredWidth() / 2;
         int cy = mCameraView.getMeasuredHeight() / 2;
@@ -519,10 +502,20 @@ public class SimpleCameraActivity extends AppCompatActivity implements
      * Embedded in this layout, just finish activity
      * @param view
      */
-    void finish(View view) {
+    void onBackClicked(View view) {
         finish();
     }
 
+    void onCameraButtonClicked(View view) {
+        if (view.getId() == R.id.take_picture) {
+            if (mBitmap != null) {
+                setResult(RESULT_OK);
+                finish();
+            } else {
+                takePhoto();
+            }
+        }
+    }
 
     private boolean isActivityDestroyed() {
         if (SDK_INT >= 17) {

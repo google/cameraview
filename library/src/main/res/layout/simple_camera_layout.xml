@@ -32,6 +32,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal|bottom"
         android:layout_marginBottom="@dimen/activity_vertical_margin"
-        app:srcCompat="@drawable/ic_camera"/>
+        app:srcCompat="@drawable/ic_camera"
+        android:onClick="onCameraButtonClicked"/>
 
 </FrameLayout>
