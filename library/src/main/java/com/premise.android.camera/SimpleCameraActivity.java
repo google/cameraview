@@ -30,11 +30,12 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaActionSound;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.StringRes;
 import android.support.design.widget.FloatingActionButton;
@@ -115,11 +116,20 @@ public class SimpleCameraActivity extends AppCompatActivity implements
 
     private Bitmap mBitmap;
 
+    private Uri mOutputUri;
+
+    private boolean mIsDestroyed;
+
     private View.OnClickListener mOnClickListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
             if (v.getId() == R.id.take_picture) {
-                takePhoto();
+                if (mBitmap != null) {
+                    setResult(RESULT_OK);
+                    finish();
+                } else {
+                    takePhoto();
+                }
             }
         }
     };
@@ -144,6 +154,11 @@ public class SimpleCameraActivity extends AppCompatActivity implements
             actionBar.setDisplayShowTitleEnabled(false);
         }
         initSound();
+        if (getIntent() != null && getIntent().hasExtra(MediaStore.EXTRA_OUTPUT)) {
+            mOutputUri = getIntent().getParcelableExtra(MediaStore.EXTRA_OUTPUT);
+        } else {
+            throw new IllegalArgumentException("SimpleCameraActivity must be passed MediaStore.EXTRA_OUTPUT");
+        }
     }
 
     private void initSound() {
@@ -196,7 +211,7 @@ public class SimpleCameraActivity extends AppCompatActivity implements
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
+        mIsDestroyed = true;
         if (mBackgroundHandler != null) {
             if (SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
                 mBackgroundHandler.getLooper().quitSafely();
@@ -210,6 +225,7 @@ public class SimpleCameraActivity extends AppCompatActivity implements
             mBitmap.recycle();
         }
         releaseSound();
+        super.onDestroy();
     }
 
     @Override
@@ -301,19 +317,30 @@ public class SimpleCameraActivity extends AppCompatActivity implements
             getBackgroundHandler().post(new Runnable() {
                 @Override
                 public void run() {
-                    File file = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES),
-                            "picture.jpg");
+                    File file = new File(mOutputUri.getPath());
                     OutputStream os = null;
                     try {
+                        if (isActivityDestroyed()) { //check: android image processing takes time
+                            return;
+                        }
                         os = new FileOutputStream(file);
-                        os.write(data);
+                        os.write(data);  //
                         os.close();
+                        if (isActivityDestroyed()) { //check: writing to disk takes time
+                            return;
+                        }
                         mBitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
                         if (Utils.bitmapNeedsRotating(SimpleCameraActivity.this,mBitmap)) {
                             mBitmap = Utils.fixBitmapOrientation(mBitmap, file);
                         }
+                        if (isActivityDestroyed()) { //check: bitmap processing takes time
+                            return;
+                        }
                         mCountDownLatch.await();
                         mCountDownLatch = new CountDownLatch(1);
+                        if (isActivityDestroyed()) { //check: animation can take time
+                            return;
+                        }
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
@@ -322,7 +349,9 @@ public class SimpleCameraActivity extends AppCompatActivity implements
                         });
                     } catch (IOException e) {
                         Log.w(TAG, "Cannot write to " + file, e);
-                        Toast.makeText(SimpleCameraActivity.this, "Failed. Try again",Toast.LENGTH_SHORT).show();
+                        Toast.makeText(SimpleCameraActivity.this,
+                                R.string.camera_failed_to_capture_image,
+                                Toast.LENGTH_SHORT).show();
                     } catch (InterruptedException e) {
                         Log.w(TAG, "Interrupted while writing image to disk", e);
                     } finally {
@@ -409,7 +438,6 @@ public class SimpleCameraActivity extends AppCompatActivity implements
             mCapturedImageView.setImageBitmap(bitmap);
             return;
         }
-        // previously invisible view
 
         int cx = mCapturedImageView.getMeasuredWidth() / 2;
         int cy = mCapturedImageView.getMeasuredHeight() / 2;
@@ -478,6 +506,22 @@ public class SimpleCameraActivity extends AppCompatActivity implements
         } else {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         }
+    }
+
+    /**
+     * Embedded in this layout, just finish activity
+     * @param view
+     */
+    void finish(View view) {
+        finish();
+    }
+
+
+    private boolean isActivityDestroyed() {
+        if (SDK_INT >= 17) {
+            return isDestroyed();
+        }
+        return isFinishing() || mIsDestroyed;
     }
 
 }

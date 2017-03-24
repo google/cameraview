@@ -24,4 +24,5 @@
     <string name="flash_auto">Flash auto</string>
     <string name="flash_off">Flash off</string>
     <string name="flash_on">Flash on</string>
+    <string name="camera_failed_to_capture_image">Sorry!  Failed to capture image.  Please try again.</string>
 </resources>
