@@ -13,6 +13,24 @@
 -->
 <resources>
 
+    <!-- Base application theme. -->
+    <style name="Theme.CameraBase" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/primaryDark</item>
+        <item name="colorAccent">@color/accent</item>
+        <item name="android:textColorPrimary">@color/primaryText</item>
+        <item name="android:textColorSecondary">@color/secondaryText</item>
+    </style>
+
+    <style name="Theme.Camera" parent="Theme.CameraBase">
+        <item name="windowNoTitle">true</item>
+        <item name="windowActionBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+
     <style name="Widget.CameraView" parent="android:Widget">
         <item name="android:adjustViewBounds">false</item>
         <item name="facing">back</item>

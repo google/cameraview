@@ -11,24 +11,33 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 -->
-<LinearLayout
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:camera="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:baselineAligned="false"
-    android:orientation="horizontal"
-    tools:context=".MainActivity">
+    android:background="@android:color/black">
 
     <include
         layout="@layout/include_simple_camera"
         android:layout_width="wrap_content"
-        android:layout_height="match_parent"/>
-
-    <include
-        layout="@layout/include_control"
-        android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_weight="1"/>
+        android:layout_gravity="left"/>
 
-</LinearLayout>
+    <!--<include-->
+        <!--layout="@layout/include_control"-->
+        <!--android:layout_width="0dp"-->
+        <!--android:layout_height="match_parent"-->
+        <!--android:layout_weight="1"/>-->
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/take_picture"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical|right"
+        android:layout_marginRight="@dimen/activity_horizontal_margin"
+        app:srcCompat="@drawable/ic_camera"/>
+
+</FrameLayout>
