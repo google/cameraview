@@ -74,7 +74,7 @@ public class SimpleCameraActivity extends AppCompatActivity implements
         ActivityCompat.OnRequestPermissionsResultCallback,
         AspectRatioFragment.Listener {
 
-    private static final String TAG = "MainActivity";
+    private static final String TAG = "SimpleCameraActivity";
 
     private static final boolean DO_ANIM = true;
 
@@ -430,7 +430,7 @@ public class SimpleCameraActivity extends AppCompatActivity implements
     @TargetApi(21)
     private void revealCapturedImage(Bitmap bitmap) {
 
-        Log.d("MainActivity", "revealCapturedImage");
+        Log.d(TAG, "revealCapturedImage");
 
         setCameraButtonImage(R.drawable.ic_check_white_24dp);
         if (SDK_INT < 21 || !DO_ANIM) {
