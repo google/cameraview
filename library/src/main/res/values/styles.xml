@@ -39,4 +39,10 @@
         <item name="flash">auto</item>
     </style>
 
+    <style name="TransparentCircleBackButton" parent="android:Widget">
+        <item name="android:src">@drawable/ic_keyboard_backspace_white_24dp</item>
+        <item name="android:foreground">@drawable/transparent_circle_selector</item>
+        <item name="android:background">@drawable/transparent_circle_25</item>
+    </style>
+
 </resources>

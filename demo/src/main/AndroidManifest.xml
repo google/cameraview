@@ -32,7 +32,8 @@
             </intent-filter>
         </activity>
 
-        <activity android:name="com.premise.android.camera.SimpleCameraActivity">
+        <activity android:name="com.premise.android.camera.SimpleCameraActivity"
+                  android:theme="@style/Theme.Camera">
         </activity>
 
     </application>
