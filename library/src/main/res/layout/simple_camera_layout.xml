@@ -36,12 +36,13 @@
         app:srcCompat="@drawable/ic_camera"
         android:onClick="onCameraButtonClicked"/>
 
-    <ImageButton
+    <android.support.v7.widget.AppCompatImageButton
         android:id="@+id/back"
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:src="@drawable/ic_keyboard_backspace_white_24dp"
         android:layout_gravity="left|top"
+        android:foreground="@drawable/ripple_bg"
         android:background="@drawable/transparent_circle"
         android:layout_marginTop="10dp"
         android:layout_marginLeft="10dp"
