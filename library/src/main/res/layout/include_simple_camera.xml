@@ -27,19 +27,7 @@
     <android.support.v7.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize">
-
-        <ImageButton
-            android:id="@+id/back"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:src="@drawable/ic_keyboard_backspace_white_24dp"
-            android:layout_gravity="center_vertical|left"
-            android:background="@drawable/transparent_circle"
-            android:layout_marginTop="8dp"
-            android:onClick="onBackClicked"/>
-
-    </android.support.v7.widget.Toolbar>
+        android:layout_height="?attr/actionBarSize"/>
 
     <ImageView
         android:id="@+id/captured_camera_image"

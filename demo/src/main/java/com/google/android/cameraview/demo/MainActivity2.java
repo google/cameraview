@@ -34,5 +34,6 @@ public class MainActivity2 extends AppCompatActivity {
         String imagePath = getFilesDir().getPath() + "/picture.jpg";
         intent.putExtra(SimpleCameraActivity.KEY_OUTPUT_PATH,imagePath);
         startActivityForResult(intent, REQ_CODE);
+        finish();
     }
 }
