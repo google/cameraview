@@ -45,7 +45,7 @@
         android:layout_height="48dp"
         android:src="@drawable/ic_keyboard_backspace_white_24dp"
         android:layout_gravity="left|top"
-        android:foreground="@drawable/ripple_fg"
+        android:foreground="@drawable/semi_transparent_fg"
         android:background="@drawable/transparent_circle_25"
         android:layout_marginTop="10dp"
         android:layout_marginLeft="10dp"
