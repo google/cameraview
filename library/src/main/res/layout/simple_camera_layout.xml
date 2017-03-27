@@ -35,4 +35,15 @@
         app:srcCompat="@drawable/ic_camera"
         android:onClick="onCameraButtonClicked"/>
 
+    <ImageButton
+        android:id="@+id/back"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/ic_keyboard_backspace_white_24dp"
+        android:layout_gravity="left|top"
+        android:background="@drawable/transparent_circle"
+        android:layout_marginTop="10dp"
+        android:layout_marginLeft="10dp"
+        android:onClick="finish"/>
+
 </FrameLayout>

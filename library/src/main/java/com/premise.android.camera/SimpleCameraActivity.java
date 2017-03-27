@@ -125,7 +125,6 @@ public class SimpleCameraActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
         setContentView(R.layout.simple_camera_layout);
         mCameraView = (CameraView) findViewById(R.id.camera);
-        mCameraView.setFlash(CameraView.FLASH_OFF);
         if (mCameraView != null) {
             mCameraView.addCallback(mCallback);
         }
@@ -210,6 +209,7 @@ public class SimpleCameraActivity extends AppCompatActivity implements
             mBitmap.recycle();
         }
         releaseSound();
+        mCameraView.removeCallback(mCallback);
         super.onDestroy();
     }
 
@@ -331,6 +331,9 @@ public class SimpleCameraActivity extends AppCompatActivity implements
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
+                                if (isActivityDestroyed()) { //check: animation can take time
+                                    return;
+                                }
                                 revealCapturedImage(mBitmap);
                             }
                         });
@@ -472,7 +475,7 @@ public class SimpleCameraActivity extends AppCompatActivity implements
         int initialRadius = mCameraView.getWidth() / 2;
 
         // create the animation (the final radius is zero)
-        Animator anim =
+        final Animator anim =
                 ViewAnimationUtils.createCircularReveal(mCameraView, cx, cy, initialRadius, 0);
 
         // make the view invisible when the animation is done
@@ -482,6 +485,7 @@ public class SimpleCameraActivity extends AppCompatActivity implements
                 super.onAnimationEnd(animation);
                 mCameraView.setVisibility(View.INVISIBLE);
                 mCountDownLatch.countDown();
+                anim.removeAllListeners();
             }
         });
 
