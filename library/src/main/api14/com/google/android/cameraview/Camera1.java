@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 
@@ -151,7 +152,9 @@ class Camera1 extends CameraViewImpl {
     @Override
     Set<AspectRatio> getSupportedAspectRatios() {
         SizeMap idealAspectRatios = mPreviewSizes;
-        for (AspectRatio aspectRatio : idealAspectRatios.ratios()) {
+
+        Set<AspectRatio> ratios = new TreeSet<>(idealAspectRatios.ratios());
+        for (AspectRatio aspectRatio : ratios) {
             if (mPictureSizes.sizes(aspectRatio) == null) {
                 idealAspectRatios.remove(aspectRatio);
             }
