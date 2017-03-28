@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.premise.android.camera;
+package com.google.android.cameraview;
 
 import android.app.Dialog;
 import android.content.Context;
@@ -28,8 +28,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
-
-import com.google.android.cameraview.AspectRatio;
 
 import java.util.Set;
 

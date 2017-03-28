@@ -53,6 +53,7 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.google.android.cameraview.AspectRatio;
+import com.google.android.cameraview.AspectRatioFragment;
 import com.google.android.cameraview.CameraView;
 import com.google.android.cameraview.R;
 
