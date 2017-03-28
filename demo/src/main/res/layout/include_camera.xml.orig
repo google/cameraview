@@ -11,27 +11,25 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 -->
-<RelativeLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/root_view"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/primary"
-    tools:context=".MainActivity">
+<<<<<<< HEAD
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+=======
+    android:background="@android:color/black">
+>>>>>>> 6ceaf867d34cd4af6761c63c804cf086609544b0
 
-    <include
-        layout="@layout/include_camera"
+    <com.google.android.cameraview.CameraView
+        android:id="@+id/camera"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_height="match_parent"
+        android:adjustViewBounds="true"
+        app:zoom="2.2"/>
 
-    <android.support.design.widget.FloatingActionButton
-        android:id="@+id/take_picture"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:layout_alignParentBottom="true"
-        app:srcCompat="@drawable/ic_camera"/>
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"/>
 
-</RelativeLayout>
+</FrameLayout>
