@@ -16,12 +16,9 @@
 
 package com.google.android.cameraview.demo;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
-
-import com.premise.android.camera.SimpleCameraActivity;
 
 
 public class MainActivity2 extends AppCompatActivity {
@@ -30,10 +27,5 @@ public class MainActivity2 extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Intent intent = new Intent(this, SimpleCameraActivity.class);
-        String imagePath = getFilesDir().getPath() + "/picture.jpg";
-        intent.putExtra(SimpleCameraActivity.KEY_OUTPUT_PATH,imagePath);
-        startActivityForResult(intent, REQ_CODE);
-        finish();
     }
 }

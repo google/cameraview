@@ -14,4 +14,5 @@
 <resources>
     <dimen name="activity_horizontal_margin">16dp</dimen>
     <dimen name="activity_vertical_margin">16dp</dimen>
+    <dimen name="transparent_back_button_size">48dp</dimen>
 </resources>

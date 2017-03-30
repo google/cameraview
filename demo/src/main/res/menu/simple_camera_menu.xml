@@ -33,6 +33,6 @@
         android:icon="@drawable/ic_switch_camera"
         android:title="@string/switch_camera"
         app:showAsAction="ifRoom"
-        android:visible="false"/>
+        android:visible="true"/>
 
 </menu>
