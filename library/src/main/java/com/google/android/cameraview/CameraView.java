@@ -29,6 +29,9 @@ import android.support.v4.os.ParcelableCompat;
 import android.support.v4.os.ParcelableCompatCreatorCallbacks;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
+import android.view.View;
 import android.widget.FrameLayout;
 
 import java.lang.annotation.Retention;
@@ -72,6 +75,8 @@ public class CameraView extends FrameLayout {
 
     CameraViewImpl mImpl;
 
+    PreviewOverlay mOverlay;
+
     private final CallbackBridge mCallbacks;
 
     private boolean mAdjustViewBounds;
@@ -89,7 +94,7 @@ public class CameraView extends FrameLayout {
     @SuppressWarnings("WrongConstant")
     public CameraView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        if (isInEditMode()){
+        if (isInEditMode()) {
             mCallbacks = null;
             mDisplayOrientationDetector = null;
             return;
@@ -104,6 +109,7 @@ public class CameraView extends FrameLayout {
         } else {
             mImpl = new Camera2Api23(mCallbacks, preview, context);
         }
+        mOverlay = createPreviewOverlay(context);
         // Attributes
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
                 R.style.Widget_CameraView);
@@ -138,6 +144,11 @@ public class CameraView extends FrameLayout {
         return preview;
     }
 
+    private PreviewOverlay createPreviewOverlay(Context context) {
+        final View view = View.inflate(context, R.layout.preview_overlay, this);
+        return (PreviewOverlay) view.findViewById(R.id.preview_overlay);
+    }
+
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
@@ -156,7 +167,7 @@ public class CameraView extends FrameLayout {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        if (isInEditMode()){
+        if (isInEditMode()) {
             super.onMeasure(widthMeasureSpec, heightMeasureSpec);
             return;
         }
@@ -245,7 +256,7 @@ public class CameraView extends FrameLayout {
     public void start() {
         if (!mImpl.start()) {
             //store the state ,and restore this state after fall back o Camera1
-            Parcelable state=onSaveInstanceState();
+            Parcelable state = onSaveInstanceState();
             // Camera2 uses legacy hardware layer; fall back to Camera1
             mImpl = new Camera1(mCallbacks, createPreviewImpl(getContext()));
             onRestoreInstanceState(state);
@@ -380,6 +391,32 @@ public class CameraView extends FrameLayout {
     }
 
     /**
+     * Enables or disables the manual focus mode. When the current camera doesn't support
+     * manual focus, calling this method will have no effect.
+     *
+     * @param manualFocus {@code true} to enable manual focus mode. {@code false} to
+     *                    disable it.
+     */
+    public void setManualFocus(final boolean manualFocus) {
+        if (manualFocus) {
+            if (!mOverlay.hasGestureDetector()) {
+                mOverlay.setGestureListener(new GestureDetector.SimpleOnGestureListener() {
+                    @Override
+                    public boolean onSingleTapUp(MotionEvent e) {
+                        if (!mImpl.hasManualFocus()) {
+                            return false;
+                        }
+                        mImpl.setFocusAt((int) e.getX(), (int) e.getY());
+                        return true;
+                    }
+                });
+            }
+        } else {
+            mOverlay.setGestureListener(null);
+        }
+    }
+
+    /**
      * Sets the flash mode.
      *
      * @param flash The desired flash mode.
@@ -446,6 +483,13 @@ public class CameraView extends FrameLayout {
         public void onPictureTaken(byte[] data) {
             for (Callback callback : mCallbacks) {
                 callback.onPictureTaken(CameraView.this, data);
+            }
+        }
+
+        @Override
+        public void onFocusAt(int x, int y) {
+            for (Callback callback : mCallbacks) {
+                callback.onFocusAt(x, y);
             }
         }
 
@@ -534,6 +578,15 @@ public class CameraView extends FrameLayout {
          * @param data       JPEG data.
          */
         public void onPictureTaken(CameraView cameraView, byte[] data) {
+        }
+
+        /**
+         * Called when focus happens.
+         *
+         * @param x View's x coordinate.
+         * @param y View's y coordinate.
+         */
+        public void onFocusAt(int x, int y) {
         }
     }
 

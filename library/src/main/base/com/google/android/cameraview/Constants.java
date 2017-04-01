@@ -32,4 +32,11 @@ interface Constants {
 
     int LANDSCAPE_90 = 90;
     int LANDSCAPE_270 = 270;
+
+    int FOCUS_HOLD_MILLIS = 3000;
+
+    float AF_REGION_BOX = 0.2f;
+    float AE_REGION_BOX = 0.3f;
+
+    float METERING_REGION_FRACTION = 0.1225f;
 }
