@@ -16,10 +16,11 @@
 
 package com.google.android.cameraview;
 
+import static android.os.Build.VERSION.SDK_INT;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
-import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.annotation.IntDef;
@@ -95,14 +96,15 @@ public class CameraView extends FrameLayout {
             return;
         }
         // Internal setup
-        final PreviewImpl preview = createPreviewImpl(context);
-        mCallbacks = new CallbackBridge();
-        if (Build.VERSION.SDK_INT < 21) {
+        PreviewImpl preview = createPreviewImpl(context);
+        mCallbacks = new CallbackBridge(this);
+        final Context applicationContext = context.getApplicationContext();
+        if (SDK_INT < 21) {
             mImpl = new Camera1(mCallbacks, preview);
-        } else if (Build.VERSION.SDK_INT < 23) {
-            mImpl = new Camera2(mCallbacks, preview, context);
+        } else if (SDK_INT < 23) {
+            mImpl = new Camera2(mCallbacks, preview, applicationContext);
         } else {
-            mImpl = new Camera2Api23(mCallbacks, preview, context);
+            mImpl = new Camera2Api23(mCallbacks, preview, applicationContext);
         }
         // Attributes
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
@@ -130,7 +132,7 @@ public class CameraView extends FrameLayout {
     @NonNull
     private PreviewImpl createPreviewImpl(Context context) {
         PreviewImpl preview;
-        if (Build.VERSION.SDK_INT < 14) {
+        if (SDK_INT < 14) {
             preview = new SurfaceViewPreview(context, this);
         } else {
             preview = new TextureViewPreview(context, this);
@@ -152,6 +154,7 @@ public class CameraView extends FrameLayout {
             mDisplayOrientationDetector.disable();
         }
         super.onDetachedFromWindow();
+        mCallbacks.cleanup();
     }
 
     @Override
@@ -407,13 +410,15 @@ public class CameraView extends FrameLayout {
         mImpl.takePicture();
     }
 
-    private class CallbackBridge implements CameraViewImpl.Callback {
+    private static class CallbackBridge implements CameraViewImpl.Callback {
 
         private final ArrayList<Callback> mCallbacks = new ArrayList<>();
 
         private boolean mRequestLayoutOnOpen;
+        private CameraView cameraView;
 
-        CallbackBridge() {
+        CallbackBridge(CameraView cameraView) {
+            this.cameraView = cameraView;
         }
 
         public void add(Callback callback) {
@@ -428,29 +433,34 @@ public class CameraView extends FrameLayout {
         public void onCameraOpened() {
             if (mRequestLayoutOnOpen) {
                 mRequestLayoutOnOpen = false;
-                requestLayout();
+                cameraView.requestLayout();
             }
             for (Callback callback : mCallbacks) {
-                callback.onCameraOpened(CameraView.this);
+                callback.onCameraOpened(cameraView);
             }
         }
 
         @Override
         public void onCameraClosed() {
             for (Callback callback : mCallbacks) {
-                callback.onCameraClosed(CameraView.this);
+                callback.onCameraClosed(cameraView);
             }
         }
 
         @Override
         public void onPictureTaken(byte[] data) {
             for (Callback callback : mCallbacks) {
-                callback.onPictureTaken(CameraView.this, data);
+                callback.onPictureTaken(cameraView, data);
             }
         }
 
         public void reserveRequestLayoutOnOpen() {
             mRequestLayoutOnOpen = true;
+        }
+
+        private void cleanup() {
+            cameraView = null;
+            mCallbacks.clear();
         }
     }
 
@@ -535,6 +545,7 @@ public class CameraView extends FrameLayout {
          */
         public void onPictureTaken(CameraView cameraView, byte[] data) {
         }
+
     }
 
 }
