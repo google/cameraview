@@ -449,6 +449,13 @@ public class CameraView extends FrameLayout {
             }
         }
 
+        @Override
+        public void onTakePictureFailed(Throwable throwable) {
+            for (Callback callback : mCallbacks) {
+                callback.onTakePictureFailed(CameraView.this, throwable);
+            }
+        }
+
         public void reserveRequestLayoutOnOpen() {
             mRequestLayoutOnOpen = true;
         }
@@ -534,6 +541,15 @@ public class CameraView extends FrameLayout {
          * @param data       JPEG data.
          */
         public void onPictureTaken(CameraView cameraView, byte[] data) {
+        }
+
+        /**
+         * Called when taking a picture has failed
+         *
+         * @param cameraView The associated {@link CameraView}.
+         * @param throwable  Exception
+         */
+        public void onTakePictureFailed(CameraView cameraView, Throwable throwable) {
         }
     }
 

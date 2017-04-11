@@ -238,15 +238,20 @@ class Camera1 extends CameraViewImpl {
 
     void takePictureInternal() {
         if (!isPictureCaptureInProgress.getAndSet(true)) {
-            mCamera.takePicture(null, null, null, new Camera.PictureCallback() {
-                @Override
-                public void onPictureTaken(byte[] data, Camera camera) {
-                    isPictureCaptureInProgress.set(false);
-                    mCallback.onPictureTaken(data);
-                    camera.cancelAutoFocus();
-                    camera.startPreview();
-                }
-            });
+            try {
+                mCamera.takePicture(null, null, null, new Camera.PictureCallback() {
+                    @Override
+                    public void onPictureTaken(byte[] data, Camera camera) {
+                        isPictureCaptureInProgress.set(false);
+                        mCallback.onPictureTaken(data);
+                        camera.cancelAutoFocus();
+                        camera.startPreview();
+                    }
+                });
+            }
+            catch (RuntimeException ex) {
+                mCallback.onTakePictureFailed(ex);
+            }
         }
     }
 
