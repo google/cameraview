@@ -13,6 +13,8 @@
 // limitations under the License.
 
 apply plugin: 'com.android.library'
+apply plugin: 'com.jfrog.artifactory'
+apply plugin: 'maven-publish'
 
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -22,6 +24,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         testInstrumentationRunner 'android.support.test.runner.AndroidJUnitRunner'
+        vectorDrawables.useSupportLibrary = true
     }
     buildTypes {
         release {
@@ -38,9 +41,39 @@ android {
     }
 }
 
+artifactory {
+    contextUrl = "${System.env.ARTIFACTORY_URL}"
+    publish {
+        repository {
+            repoKey = 'private-local'
+            username = "${System.env.ARTIFACTORY_USERNAME}"
+            password = "${System.env.ARTIFACTORY_PASSWORD}"
+            maven = true
+        }
+        defaults {
+            publications('aar')
+        }
+    }
+}
+
+
+
+publishing {
+    publications {
+        aar(MavenPublication) {
+            groupId 'premise.android.cameraview'
+            version '0.2.6'
+            artifactId 'cameraview'
+
+            artifact("$buildDir/outputs/aar/${project.getName()}-release.aar")
+        }
+    }
+}
+
 dependencies {
     compile "com.android.support:support-annotations:$supportLibraryVersion"
     compile "com.android.support:support-v4:$supportLibraryVersion"
+    compile "com.android.support:design:$supportLibraryVersion"
 
     // Tests
     testCompile 'junit:junit:4.12'

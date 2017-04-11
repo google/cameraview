@@ -17,4 +17,8 @@
     <color name="accent">#4CAF50</color>
     <color name="primaryText">#212121</color>
     <color name="secondaryText">#727272</color>
+
+    <color name="semi_transparent_black_25">#40000000</color>
+    <color name="semi_transparent_black_75">#BF000000</color>
+
 </resources>

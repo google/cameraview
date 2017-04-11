@@ -13,20 +13,28 @@
 -->
 <FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:camera="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@android:color/black">
+    android:layout_height="match_parent">
 
     <com.google.android.cameraview.CameraView
         android:id="@+id/camera"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:adjustViewBounds="true"/>
+        android:adjustViewBounds="true"
+        camera:flash="off"/>
 
     <android.support.v7.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize">
-    </android.support.v7.widget.Toolbar>
+        android:layout_height="?attr/actionBarSize"/>
+
+    <ImageView
+        android:id="@+id/captured_camera_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:adjustViewBounds="true"
+        android:background="@android:color/black"
+        android:visibility="invisible"/>
 
 </FrameLayout>
