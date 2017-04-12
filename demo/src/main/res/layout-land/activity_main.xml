@@ -23,7 +23,7 @@
     tools:context=".MainActivity">
 
     <include
-        layout="@layout/include_simple_camera"
+        layout="@layout/include_camera"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"/>
 

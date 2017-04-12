@@ -25,7 +25,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.StrictMode;
 import android.support.annotation.NonNull;
 import android.support.annotation.StringRes;
 import android.support.design.widget.FloatingActionButton;
@@ -40,7 +39,6 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.TextureView;
 import android.view.View;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
@@ -114,18 +112,6 @@ public class MainActivity extends AppCompatActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
-                .detectNetwork()
-                .penaltyLog()
-                .build());
-        StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
-                .detectLeakedSqlLiteObjects()
-                .detectLeakedClosableObjects()
-                .detectActivityLeaks()
-                .penaltyLog()
-                .build());
-
         mRootView = findViewById(R.id.root_view);
         mCameraView = (CameraView) findViewById(R.id.camera);
         if (mCameraView != null) {
@@ -171,10 +157,6 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     protected void onDestroy() {
-        TextureView textureView = (TextureView)mCameraView.findViewById(R.id.texture_view);
-        textureView.getSurfaceTexture().setOnFrameAvailableListener(null);
-        textureView.getSurfaceTexture().release();
-        textureView.setSurfaceTextureListener(null);
         super.onDestroy();
         if (mBackgroundHandler != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {

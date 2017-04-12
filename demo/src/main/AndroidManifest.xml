@@ -25,8 +25,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Demo">
 
-        <activity android:name=".MainActivity"
-                  android:theme="@style/Theme.Camera">
+        <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
