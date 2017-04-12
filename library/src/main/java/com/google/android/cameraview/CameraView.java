@@ -30,14 +30,18 @@ import android.support.v4.os.ParcelableCompat;
 import android.support.v4.os.ParcelableCompatCreatorCallbacks;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.widget.FrameLayout;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Set;
 
 public class CameraView extends FrameLayout {
+
+    private static final String TAG = "CameraView";
 
     /** The camera device faces the opposite direction as the device's screen. */
     public static final int FACING_BACK = Constants.FACING_BACK;
@@ -415,10 +419,10 @@ public class CameraView extends FrameLayout {
         private final ArrayList<Callback> mCallbacks = new ArrayList<>();
 
         private boolean mRequestLayoutOnOpen;
-        private CameraView cameraView;
+        private WeakReference<CameraView> cameraView;
 
         CallbackBridge(CameraView cameraView) {
-            this.cameraView = cameraView;
+            this.cameraView = new WeakReference<>(cameraView);
         }
 
         public void add(Callback callback) {
@@ -433,24 +437,38 @@ public class CameraView extends FrameLayout {
         public void onCameraOpened() {
             if (mRequestLayoutOnOpen) {
                 mRequestLayoutOnOpen = false;
-                cameraView.requestLayout();
+                if (cameraView.get() != null) {
+                    cameraView.get().requestLayout();
+                }
             }
             for (Callback callback : mCallbacks) {
-                callback.onCameraOpened(cameraView);
+                try {
+                    callback.onCameraOpened(cameraView.get());
+                }catch (Throwable t) {
+                    Log.e(TAG,"onCameraOpened() failed",t);
+                }
             }
         }
 
         @Override
         public void onCameraClosed() {
             for (Callback callback : mCallbacks) {
-                callback.onCameraClosed(cameraView);
+                try {
+                    callback.onCameraClosed(cameraView.get());
+                }catch (Throwable t) {
+                    Log.e(TAG,"onCameraClosed() failed",t);
+                }
             }
         }
 
         @Override
         public void onPictureTaken(byte[] data) {
             for (Callback callback : mCallbacks) {
-                callback.onPictureTaken(cameraView, data);
+                try {
+                    callback.onPictureTaken(cameraView.get(), data);
+                }catch (Throwable t) {
+                    Log.e(TAG,"onPictureTaken() failed",t);
+                }
             }
         }
 
@@ -459,7 +477,6 @@ public class CameraView extends FrameLayout {
         }
 
         private void cleanup() {
-            cameraView = null;
             mCallbacks.clear();
         }
     }
