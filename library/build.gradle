@@ -24,7 +24,6 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         testInstrumentationRunner 'android.support.test.runner.AndroidJUnitRunner'
-        vectorDrawables.useSupportLibrary = true
     }
     buildTypes {
         release {
@@ -73,7 +72,6 @@ publishing {
 dependencies {
     compile "com.android.support:support-annotations:$supportLibraryVersion"
     compile "com.android.support:support-v4:$supportLibraryVersion"
-    compile "com.android.support:design:$supportLibraryVersion"
 
     // Tests
     testCompile 'junit:junit:4.12'

@@ -16,11 +16,10 @@
 
 package com.google.android.cameraview;
 
-import static android.os.Build.VERSION.SDK_INT;
-
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.annotation.IntDef;
@@ -30,7 +29,6 @@ import android.support.v4.os.ParcelableCompat;
 import android.support.v4.os.ParcelableCompatCreatorCallbacks;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.widget.FrameLayout;
 
 import java.lang.annotation.Retention;
@@ -40,8 +38,6 @@ import java.util.ArrayList;
 import java.util.Set;
 
 public class CameraView extends FrameLayout {
-
-    private static final String TAG = "CameraView";
 
     /** The camera device faces the opposite direction as the device's screen. */
     public static final int FACING_BACK = Constants.FACING_BACK;
@@ -100,15 +96,14 @@ public class CameraView extends FrameLayout {
             return;
         }
         // Internal setup
-        PreviewImpl preview = createPreviewImpl(context);
+        final PreviewImpl preview = createPreviewImpl(context);
         mCallbacks = new CallbackBridge(this);
-        final Context applicationContext = context.getApplicationContext();
-        if (SDK_INT < 21) {
+        if (Build.VERSION.SDK_INT < 21) {
             mImpl = new Camera1(mCallbacks, preview);
-        } else if (SDK_INT < 23) {
-            mImpl = new Camera2(mCallbacks, preview, applicationContext);
+        } else if (Build.VERSION.SDK_INT < 23) {
+            mImpl = new Camera2(mCallbacks, preview, context.getApplicationContext());
         } else {
-            mImpl = new Camera2Api23(mCallbacks, preview, applicationContext);
+            mImpl = new Camera2Api23(mCallbacks, preview, context.getApplicationContext());
         }
         // Attributes
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
@@ -136,7 +131,7 @@ public class CameraView extends FrameLayout {
     @NonNull
     private PreviewImpl createPreviewImpl(Context context) {
         PreviewImpl preview;
-        if (SDK_INT < 14) {
+        if (Build.VERSION.SDK_INT < 14) {
             preview = new SurfaceViewPreview(context, this);
         } else {
             preview = new TextureViewPreview(context, this);
@@ -158,7 +153,9 @@ public class CameraView extends FrameLayout {
             mDisplayOrientationDetector.disable();
         }
         super.onDetachedFromWindow();
-        mCallbacks.cleanup();
+        if (mCallbacks != null && mCallbacks.mCallbacks != null) {
+            mCallbacks.mCallbacks.clear();
+        }
     }
 
     @Override
@@ -419,6 +416,7 @@ public class CameraView extends FrameLayout {
         private final ArrayList<Callback> mCallbacks = new ArrayList<>();
 
         private boolean mRequestLayoutOnOpen;
+
         private WeakReference<CameraView> cameraView;
 
         CallbackBridge(CameraView cameraView) {
@@ -442,42 +440,26 @@ public class CameraView extends FrameLayout {
                 }
             }
             for (Callback callback : mCallbacks) {
-                try {
-                    callback.onCameraOpened(cameraView.get());
-                }catch (Throwable t) {
-                    Log.e(TAG,"onCameraOpened() failed",t);
-                }
+                callback.onCameraOpened(cameraView.get());
             }
         }
 
         @Override
         public void onCameraClosed() {
             for (Callback callback : mCallbacks) {
-                try {
-                    callback.onCameraClosed(cameraView.get());
-                }catch (Throwable t) {
-                    Log.e(TAG,"onCameraClosed() failed",t);
-                }
+                callback.onCameraClosed(cameraView.get());
             }
         }
 
         @Override
         public void onPictureTaken(byte[] data) {
             for (Callback callback : mCallbacks) {
-                try {
-                    callback.onPictureTaken(cameraView.get(), data);
-                }catch (Throwable t) {
-                    Log.e(TAG,"onPictureTaken() failed",t);
-                }
+                callback.onPictureTaken(cameraView.get(), data);
             }
         }
 
         public void reserveRequestLayoutOnOpen() {
             mRequestLayoutOnOpen = true;
-        }
-
-        private void cleanup() {
-            mCallbacks.clear();
         }
     }
 
@@ -515,7 +497,7 @@ public class CameraView extends FrameLayout {
             out.writeInt(flash);
         }
 
-        public static final Parcelable.Creator<SavedState> CREATOR
+        public static final Creator<SavedState> CREATOR
                 = ParcelableCompat.newCreator(new ParcelableCompatCreatorCallbacks<SavedState>() {
 
             @Override
@@ -562,7 +544,6 @@ public class CameraView extends FrameLayout {
          */
         public void onPictureTaken(CameraView cameraView, byte[] data) {
         }
-
     }
 
 }

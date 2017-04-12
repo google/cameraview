@@ -18,5 +18,4 @@
     <public name="flash" type="attr"/>
 
     <public name="Widget.CameraView" type="style"/>
-
 </resources>
