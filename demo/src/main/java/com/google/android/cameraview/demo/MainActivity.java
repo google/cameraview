@@ -35,12 +35,10 @@ import android.support.v7.app.ActionBar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.google.android.cameraview.AspectRatio;
@@ -91,10 +89,6 @@ public class MainActivity extends AppCompatActivity implements
 
     private Handler mBackgroundHandler;
 
-    private View mRootView;
-
-    private FloatingActionButton mCaptureFab;
-
     private View.OnClickListener mOnClickListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -112,14 +106,13 @@ public class MainActivity extends AppCompatActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mRootView = findViewById(R.id.root_view);
         mCameraView = (CameraView) findViewById(R.id.camera);
         if (mCameraView != null) {
             mCameraView.addCallback(mCallback);
         }
-        mCaptureFab = (FloatingActionButton) findViewById(R.id.take_picture);
-        if (mCaptureFab != null) {
-            mCaptureFab.setOnClickListener(mOnClickListener);
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.take_picture);
+        if (fab != null) {
+            fab.setOnClickListener(mOnClickListener);
         }
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -221,46 +214,11 @@ public class MainActivity extends AppCompatActivity implements
         return false;
     }
 
-    private void repositionCaptureFab() {
-        if ((mRootView == null) || (mCameraView == null) || (mCaptureFab == null)) {
-            return;
-        }
-        mCaptureFab.post(new Runnable() {
-            @Override
-            public void run() {
-                RelativeLayout.LayoutParams layoutParams =
-                        (RelativeLayout.LayoutParams) mCaptureFab.getLayoutParams();
-
-                DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
-                int minMargin = (int) (15 * displayMetrics.density + 0.5f);
-
-                if (displayMetrics.widthPixels > displayMetrics.heightPixels) {
-                    int rightMargin = ((mRootView.getWidth() - mCameraView.getWidth()) / 2) -
-                            (mCaptureFab.getWidth() / 2);
-                    if (rightMargin < minMargin) {
-                        rightMargin = minMargin;
-                    }
-                    layoutParams.rightMargin = rightMargin;
-                } else {
-                    int bottomMargin = ((mRootView.getHeight() - mCameraView.getHeight()) / 2) -
-                            (mCaptureFab.getHeight() / 2);
-                    if (bottomMargin < minMargin) {
-                        bottomMargin = minMargin;
-                    }
-                    layoutParams.bottomMargin = bottomMargin;
-                }
-
-                mCaptureFab.setLayoutParams(layoutParams);
-            }
-        });
-    }
-
     @Override
     public void onAspectRatioSelected(@NonNull AspectRatio ratio) {
         if (mCameraView != null) {
             Toast.makeText(this, ratio.toString(), Toast.LENGTH_SHORT).show();
             mCameraView.setAspectRatio(ratio);
-            repositionCaptureFab();
         }
     }
 
@@ -279,7 +237,6 @@ public class MainActivity extends AppCompatActivity implements
         @Override
         public void onCameraOpened(CameraView cameraView) {
             Log.d(TAG, "onCameraOpened");
-            repositionCaptureFab();
         }
 
         @Override
