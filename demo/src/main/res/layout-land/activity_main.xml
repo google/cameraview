@@ -46,8 +46,8 @@
         android:layout_alignParentEnd="true"
         android:layout_alignParentRight="true"
         android:layout_centerVertical="true"
-        android:layout_margin="16dp"
         app:srcCompat="@drawable/ic_camera"
+        app:useCompatPadding="true"
         tools:ignore="RelativeOverlap"/>
 
 </RelativeLayout>

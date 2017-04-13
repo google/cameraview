@@ -30,6 +30,7 @@ import android.support.annotation.StringRes;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AlertDialog;
@@ -188,13 +189,15 @@ public class MainActivity extends AppCompatActivity implements
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.aspect_ratio:
-                if (mCameraView != null) {
+                FragmentManager fragmentManager = getSupportFragmentManager();
+                if (mCameraView != null
+                        && fragmentManager.findFragmentByTag(FRAGMENT_DIALOG) == null) {
                     final Set<AspectRatio> ratios = mCameraView.getSupportedAspectRatios();
                     final AspectRatio currentRatio = mCameraView.getAspectRatio();
                     AspectRatioFragment.newInstance(ratios, currentRatio)
-                            .show(getSupportFragmentManager(), FRAGMENT_DIALOG);
+                            .show(fragmentManager, FRAGMENT_DIALOG);
                 }
-                break;
+                return true;
             case R.id.switch_flash:
                 if (mCameraView != null) {
                     mCurrentFlash = (mCurrentFlash + 1) % FLASH_OPTIONS.length;
@@ -202,16 +205,16 @@ public class MainActivity extends AppCompatActivity implements
                     item.setIcon(FLASH_ICONS[mCurrentFlash]);
                     mCameraView.setFlash(FLASH_OPTIONS[mCurrentFlash]);
                 }
-                break;
+                return true;
             case R.id.switch_camera:
                 if (mCameraView != null) {
                     int facing = mCameraView.getFacing();
                     mCameraView.setFacing(facing == CameraView.FACING_FRONT ?
                             CameraView.FACING_BACK : CameraView.FACING_FRONT);
                 }
-                break;
+                return true;
         }
-        return false;
+        return super.onOptionsItemSelected(item);
     }
 
     @Override

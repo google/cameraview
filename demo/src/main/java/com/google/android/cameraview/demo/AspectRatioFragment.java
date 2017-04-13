@@ -31,6 +31,7 @@ import android.widget.TextView;
 
 import com.google.android.cameraview.AspectRatio;
 
+import java.util.Arrays;
 import java.util.Set;
 
 
@@ -75,6 +76,7 @@ public class AspectRatioFragment extends DialogFragment {
         if (ratios == null) {
             throw new RuntimeException("No ratios");
         }
+        Arrays.sort(ratios);
         final AspectRatio current = args.getParcelable(ARG_CURRENT_ASPECT_RATIO);
         final AspectRatioAdapter adapter = new AspectRatioAdapter(ratios, current);
         return new AlertDialog.Builder(getActivity())
