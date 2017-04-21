@@ -69,6 +69,10 @@ abstract class CameraViewImpl {
 
     abstract void setDisplayOrientation(int displayOrientation);
 
+    abstract float getHorizontalFOV();
+
+    abstract float getVerticalFOV();
+
     interface Callback {
 
         void onCameraOpened();

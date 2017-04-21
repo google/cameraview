@@ -271,6 +271,16 @@ class Camera1 extends CameraViewImpl {
         }
     }
 
+    @Override
+    float getHorizontalFOV() {
+        return mCameraParameters.getHorizontalViewAngle();
+    }
+
+    @Override
+    float getVerticalFOV() {
+        return mCameraParameters.getVerticalViewAngle();
+    }
+
     /**
      * This rewrites {@link #mCameraId} and {@link #mCameraInfo}.
      */

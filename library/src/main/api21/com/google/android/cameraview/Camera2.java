@@ -32,6 +32,7 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.support.annotation.NonNull;
 import android.util.Log;
+import android.util.SizeF;
 import android.util.SparseIntArray;
 import android.view.Surface;
 
@@ -345,6 +346,24 @@ class Camera2 extends CameraViewImpl {
     void setDisplayOrientation(int displayOrientation) {
         mDisplayOrientation = displayOrientation;
         mPreview.setDisplayOrientation(mDisplayOrientation);
+    }
+
+    @Override
+    float getHorizontalFOV() {
+        SizeF sizeF = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+        float[] focalLengths = mCameraCharacteristics.get(
+                CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+
+        return (float) (2 * Math.toDegrees(Math.atan(sizeF.getWidth() / (2 * focalLengths[0]))));
+    }
+
+    @Override
+    float getVerticalFOV() {
+        SizeF sizeF = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+        float[] focalLengths = mCameraCharacteristics.get(
+                CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+
+        return (float) (2 * Math.toDegrees(Math.atan(sizeF.getHeight() / (2 * focalLengths[0]))));
     }
 
     /**
@@ -756,5 +775,4 @@ class Camera2 extends CameraViewImpl {
         public abstract void onPrecaptureRequired();
 
     }
-
 }

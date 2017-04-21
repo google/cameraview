@@ -399,6 +399,14 @@ public class CameraView extends FrameLayout {
         return mImpl.getFlash();
     }
 
+    public float getHorizontalFOV() {
+        return mImpl.getHorizontalFOV();
+    }
+
+    public float getVerticalFOV() {
+        return mImpl.getVerticalFOV();
+    }
+
     /**
      * Take a picture. The result will be returned to
      * {@link Callback#onPictureTaken(CameraView, byte[])}.
