@@ -358,6 +358,11 @@ class Camera2 extends CameraViewImpl {
     }
 
     @Override
+    android.util.Size getPictureSize() {
+        return null;
+    }
+
+    @Override
     float getVerticalFOV() {
         SizeF sizeF = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
         float[] focalLengths = mCameraCharacteristics.get(

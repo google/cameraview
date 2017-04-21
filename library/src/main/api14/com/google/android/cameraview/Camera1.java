@@ -281,6 +281,11 @@ class Camera1 extends CameraViewImpl {
         return mCameraParameters.getVerticalViewAngle();
     }
 
+    @Override
+    android.util.Size getPictureSize() {
+        return null;
+    }
+
     /**
      * This rewrites {@link #mCameraId} and {@link #mCameraInfo}.
      */
