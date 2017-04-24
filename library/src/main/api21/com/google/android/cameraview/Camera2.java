@@ -32,6 +32,7 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.support.annotation.NonNull;
 import android.util.Log;
+import android.util.SizeF;
 import android.util.SparseIntArray;
 import android.view.Surface;
 
@@ -196,6 +197,8 @@ class Camera2 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
+    private Size mCurrentPictureSize = null;
+
     Camera2(Callback callback, PreviewImpl preview, Context context) {
         super(callback, preview);
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
@@ -347,6 +350,28 @@ class Camera2 extends CameraViewImpl {
         mPreview.setDisplayOrientation(mDisplayOrientation);
     }
 
+    @Override
+    float getHorizontalFOV() {
+        SizeF sizeF = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+        float[] focalLengths = mCameraCharacteristics.get(
+                CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+
+        return (float) (2 * Math.toDegrees(Math.atan(sizeF.getWidth() / (2 * focalLengths[0]))));
+    }
+
+    Size getCurrentPictureSize() {
+        return mCurrentPictureSize;
+    }
+
+    @Override
+    float getVerticalFOV() {
+        SizeF sizeF = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+        float[] focalLengths = mCameraCharacteristics.get(
+                CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+
+        return (float) (2 * Math.toDegrees(Math.atan(sizeF.getHeight() / (2 * focalLengths[0]))));
+    }
+
     /**
      * <p>Chooses a camera ID by the specified camera facing ({@link #mFacing}).</p>
      * <p>This rewrites {@link #mCameraId}, {@link #mCameraCharacteristics}, and optionally
@@ -451,6 +476,7 @@ class Camera2 extends CameraViewImpl {
         mImageReader = ImageReader.newInstance(largest.getWidth(), largest.getHeight(),
                 ImageFormat.JPEG, /* maxImages */ 2);
         mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, null);
+        mCurrentPictureSize = largest;
     }
 
     /**
@@ -756,5 +782,4 @@ class Camera2 extends CameraViewImpl {
         public abstract void onPrecaptureRequired();
 
     }
-
 }

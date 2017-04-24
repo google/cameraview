@@ -29,6 +29,9 @@ import static com.google.android.cameraview.CameraViewActions.setAspectRatio;
 import static com.google.android.cameraview.CameraViewMatchers.hasAspectRatio;
 
 import static junit.framework.Assert.assertFalse;
+import static junit.framework.Assert.assertNotNull;
+import static junit.framework.Assert.assertNotSame;
+import static junit.framework.Assert.assertTrue;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
@@ -243,6 +246,24 @@ public class CameraViewTest {
         }
     }
 
+    @Test
+    public void testGetFOV() {
+        final CameraView cameraView = (CameraView) rule.getActivity().findViewById(R.id.camera);
+
+        assertFalse(floatAlmostEqual(0.0f, cameraView.getVerticalFOV()));
+        assertFalse(floatAlmostEqual(0.0f, cameraView.getHorizontalFOV()));
+    }
+
+    @Test
+    public void testGetPictureSize() {
+        final CameraView cameraView = (CameraView) rule.getActivity().findViewById(R.id.camera);
+        final Size currentPictureSize = cameraView.getCurrentPictureSize();
+        assertNotNull("Picture size should not be null", currentPictureSize);
+        assertTrue("Width should be > 0", 0 < currentPictureSize.getWidth());
+        assertTrue("Height should be > 0", 0 < currentPictureSize.getHeight());
+    }
+
+
     private static ViewAction waitFor(final long ms) {
         return new AnythingAction("wait") {
             @Override
@@ -406,4 +427,7 @@ public class CameraViewTest {
 
     }
 
+    private boolean floatAlmostEqual(float v1, float v2) {
+        return Math.abs(v1 - v2) < 0.000001f;
+    }
 }
