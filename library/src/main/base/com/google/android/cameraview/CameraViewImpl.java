@@ -17,7 +17,6 @@
 package com.google.android.cameraview;
 
 import android.view.View;
-import android.util.Size;
 
 import java.util.Set;
 
@@ -74,7 +73,7 @@ abstract class CameraViewImpl {
 
     abstract float getVerticalFOV();
 
-    abstract Size getPictureSize();
+    abstract Size getCurrentPictureSize();
 
     interface Callback {
 
@@ -85,5 +84,4 @@ abstract class CameraViewImpl {
         void onPictureTaken(byte[] data);
 
     }
-
 }

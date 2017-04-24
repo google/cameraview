@@ -197,6 +197,8 @@ class Camera2 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
+    private Size mCurrentPictureSize = null;
+
     Camera2(Callback callback, PreviewImpl preview, Context context) {
         super(callback, preview);
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
@@ -357,9 +359,8 @@ class Camera2 extends CameraViewImpl {
         return (float) (2 * Math.toDegrees(Math.atan(sizeF.getWidth() / (2 * focalLengths[0]))));
     }
 
-    @Override
-    android.util.Size getPictureSize() {
-        return null;
+    Size getCurrentPictureSize() {
+        return mCurrentPictureSize;
     }
 
     @Override
@@ -475,6 +476,7 @@ class Camera2 extends CameraViewImpl {
         mImageReader = ImageReader.newInstance(largest.getWidth(), largest.getHeight(),
                 ImageFormat.JPEG, /* maxImages */ 2);
         mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, null);
+        mCurrentPictureSize = largest;
     }
 
     /**

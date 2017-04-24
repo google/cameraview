@@ -399,12 +399,28 @@ public class CameraView extends FrameLayout {
         return mImpl.getFlash();
     }
 
+    /**
+     * Get's equivalent of {@link android.hardware.Camera.Parameters#getHorizontalViewAngle()}
+     * @return angle in degrees
+     */
     public float getHorizontalFOV() {
         return mImpl.getHorizontalFOV();
     }
 
+    /**
+     * Get equivalent of {@link android.hardware.Camera.Parameters#getVerticalViewAngle()}
+     * @return angle in degrees
+     */
     public float getVerticalFOV() {
         return mImpl.getVerticalFOV();
+    }
+
+    /**
+     * Get current picture size
+     * @return Size of (width, height); null if camera is not yet initialized
+     */
+    public Size getCurrentPictureSize() {
+        return mImpl.getCurrentPictureSize();
     }
 
     /**

@@ -71,6 +71,8 @@ class Camera1 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
+    private Size mCurrentPictureSize = null;
+
     Camera1(Callback callback, PreviewImpl preview) {
         super(callback, preview);
         preview.setCallback(new PreviewImpl.Callback() {
@@ -281,9 +283,8 @@ class Camera1 extends CameraViewImpl {
         return mCameraParameters.getVerticalViewAngle();
     }
 
-    @Override
-    android.util.Size getPictureSize() {
-        return null;
+    Size getCurrentPictureSize() {
+        return mCurrentPictureSize;
     }
 
     /**
@@ -344,6 +345,7 @@ class Camera1 extends CameraViewImpl {
         }
         Size size = chooseOptimalSize(sizes);
         final Camera.Size currentSize = mCameraParameters.getPictureSize();
+        mCurrentPictureSize = new Size(currentSize.width, currentSize.height);
         if (currentSize.width != size.getWidth() || currentSize.height != size.getHeight()) {
             // Largest picture size in this ratio
             final Size pictureSize = mPictureSizes.sizes(mAspectRatio).last();
@@ -359,6 +361,8 @@ class Camera1 extends CameraViewImpl {
             if (mShowingPreview) {
                 mCamera.startPreview();
             }
+
+            mCurrentPictureSize = pictureSize;
         }
     }
 
