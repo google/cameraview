@@ -149,6 +149,16 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
+    float getHorizontalViewAngle() {
+        return mCameraParameters != null ? mCameraParameters.getHorizontalViewAngle() : 0f;
+    }
+
+    @Override
+    float getVerticalViewAngle() {
+        return mCameraParameters != null ? mCameraParameters.getVerticalViewAngle() : 0f;
+    }
+
+    @Override
     Set<AspectRatio> getSupportedAspectRatios() {
         SizeMap idealAspectRatios = mPreviewSizes;
         for (AspectRatio aspectRatio : idealAspectRatios.ratios()) {

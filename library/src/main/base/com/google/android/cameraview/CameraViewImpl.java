@@ -48,6 +48,10 @@ abstract class CameraViewImpl {
 
     abstract int getFacing();
 
+    abstract float getHorizontalViewAngle();
+
+    abstract float getVerticalViewAngle();
+
     abstract Set<AspectRatio> getSupportedAspectRatios();
 
     /**
