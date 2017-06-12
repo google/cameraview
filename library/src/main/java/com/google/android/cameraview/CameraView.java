@@ -33,6 +33,7 @@ import android.widget.FrameLayout;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Set;
 
@@ -96,13 +97,13 @@ public class CameraView extends FrameLayout {
         }
         // Internal setup
         final PreviewImpl preview = createPreviewImpl(context);
-        mCallbacks = new CallbackBridge();
+        mCallbacks = new CallbackBridge(this);
         if (Build.VERSION.SDK_INT < 21) {
             mImpl = new Camera1(mCallbacks, preview);
         } else if (Build.VERSION.SDK_INT < 23) {
-            mImpl = new Camera2(mCallbacks, preview, context);
+            mImpl = new Camera2(mCallbacks, preview, context.getApplicationContext());
         } else {
-            mImpl = new Camera2Api23(mCallbacks, preview, context);
+            mImpl = new Camera2Api23(mCallbacks, preview, context.getApplicationContext());
         }
         // Attributes
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
@@ -152,6 +153,9 @@ public class CameraView extends FrameLayout {
             mDisplayOrientationDetector.disable();
         }
         super.onDetachedFromWindow();
+        if (mCallbacks != null && mCallbacks.mCallbacks != null) {
+            mCallbacks.mCallbacks.clear();
+        }
     }
 
     @Override
@@ -407,13 +411,16 @@ public class CameraView extends FrameLayout {
         mImpl.takePicture();
     }
 
-    private class CallbackBridge implements CameraViewImpl.Callback {
+    private static class CallbackBridge implements CameraViewImpl.Callback {
 
         private final ArrayList<Callback> mCallbacks = new ArrayList<>();
 
         private boolean mRequestLayoutOnOpen;
 
-        CallbackBridge() {
+        private WeakReference<CameraView> cameraView;
+
+        CallbackBridge(CameraView cameraView) {
+            this.cameraView = new WeakReference<>(cameraView);
         }
 
         public void add(Callback callback) {
@@ -428,24 +435,26 @@ public class CameraView extends FrameLayout {
         public void onCameraOpened() {
             if (mRequestLayoutOnOpen) {
                 mRequestLayoutOnOpen = false;
-                requestLayout();
+                if (cameraView.get() != null) {
+                    cameraView.get().requestLayout();
+                }
             }
             for (Callback callback : mCallbacks) {
-                callback.onCameraOpened(CameraView.this);
+                callback.onCameraOpened(cameraView.get());
             }
         }
 
         @Override
         public void onCameraClosed() {
             for (Callback callback : mCallbacks) {
-                callback.onCameraClosed(CameraView.this);
+                callback.onCameraClosed(cameraView.get());
             }
         }
 
         @Override
         public void onPictureTaken(byte[] data) {
             for (Callback callback : mCallbacks) {
-                callback.onPictureTaken(CameraView.this, data);
+                callback.onPictureTaken(cameraView.get(), data);
             }
         }
 
@@ -488,7 +497,7 @@ public class CameraView extends FrameLayout {
             out.writeInt(flash);
         }
 
-        public static final Parcelable.Creator<SavedState> CREATOR
+        public static final Creator<SavedState> CREATOR
                 = ParcelableCompat.newCreator(new ParcelableCompatCreatorCallbacks<SavedState>() {
 
             @Override

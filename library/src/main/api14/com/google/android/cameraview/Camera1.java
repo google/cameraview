@@ -463,9 +463,13 @@ class Camera1 extends CameraViewImpl {
                 mCameraParameters.setFlashMode(mode);
                 mFlash = flash;
                 return true;
-            }
+             }
             String currentMode = FLASH_MODES.get(mFlash);
-            if (modes == null || !modes.contains(currentMode)) {
+            /**
+             * kkawai, fix for 1st gen Nexus 7 that only has front facing
+             * camera with no flash
+             */
+            if (modes != null && !modes.contains(currentMode)) {
                 mCameraParameters.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
                 mFlash = Constants.FLASH_OFF;
                 return true;

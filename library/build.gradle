@@ -13,6 +13,8 @@
 // limitations under the License.
 
 apply plugin: 'com.android.library'
+apply plugin: 'com.jfrog.artifactory'
+apply plugin: 'maven-publish'
 
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -35,6 +37,35 @@ android {
         main.java.srcDirs += 'src/main/api14'
         main.java.srcDirs += 'src/main/api21'
         main.java.srcDirs += 'src/main/api23'
+    }
+}
+
+artifactory {
+    contextUrl = "${System.env.ARTIFACTORY_URL}"
+    publish {
+        repository {
+            repoKey = 'private-local'
+            username = "${System.env.ARTIFACTORY_USERNAME}"
+            password = "${System.env.ARTIFACTORY_PASSWORD}"
+            maven = true
+        }
+        defaults {
+            publications('aar')
+        }
+    }
+}
+
+
+
+publishing {
+    publications {
+        aar(MavenPublication) {
+            groupId 'premise.android.cameraview'
+            version '0.2.9'
+            artifactId 'cameraview'
+
+            artifact("$buildDir/outputs/aar/${project.getName()}-release.aar")
+        }
     }
 }
 
