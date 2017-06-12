@@ -30,4 +30,6 @@ interface Constants {
     int FLASH_AUTO = 3;
     int FLASH_RED_EYE = 4;
 
+    int LANDSCAPE_90 = 90;
+    int LANDSCAPE_270 = 270;
 }
