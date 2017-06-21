@@ -69,6 +69,10 @@ abstract class CameraViewImpl {
 
     abstract void setDisplayOrientation(int displayOrientation);
 
+    abstract boolean hasManualFocus();
+
+    abstract void setFocusAt(int x, int y);
+
     interface Callback {
 
         void onCameraOpened();
@@ -76,6 +80,8 @@ abstract class CameraViewImpl {
         void onCameraClosed();
 
         void onPictureTaken(byte[] data);
+
+        void onFocusAt(int x, int y);
 
     }
 

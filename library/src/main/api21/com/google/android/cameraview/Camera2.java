@@ -19,6 +19,8 @@ package com.google.android.cameraview;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.ImageFormat;
+import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -27,9 +29,11 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
+import android.hardware.camera2.params.MeteringRectangle;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.util.SparseIntArray;
@@ -196,8 +200,35 @@ class Camera2 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
+    private Rect mCropRegion;
+
+    private MeteringRectangle[] mAFRegions = AutoFocusHelper.getZeroWeightRegion();
+
+    private MeteringRectangle[] mAERegions = AutoFocusHelper.getZeroWeightRegion();
+
+    private final Handler mCameraHandler;
+
+    /** Runnable that returns to CONTROL_AF_MODE = AF_CONTINUOUS_PICTURE. */
+    private final Runnable mReturnToContinuousAFRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (mPreviewRequestBuilder != null) {
+                updateAutoFocus();
+                if (mCaptureSession != null) {
+                    try {
+                        mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(),
+                                mCaptureCallback, null);
+                    } catch (CameraAccessException e) {
+                        mAutoFocus = !mAutoFocus; // Revert
+                    }
+                }
+            }
+        }
+    };
+
     Camera2(Callback callback, PreviewImpl preview, Context context) {
         super(callback, preview);
+        mCameraHandler = new Handler();
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
         mPreview.setCallback(new PreviewImpl.Callback() {
             @Override
@@ -212,6 +243,7 @@ class Camera2 extends CameraViewImpl {
         if (!chooseCameraIdByFacing()) {
             return false;
         }
+        mCropRegion = AutoFocusHelper.cropRegionForZoom(mCameraCharacteristics, 1);
         collectCameraInfo();
         prepareImageReader();
         startOpeningCamera();
@@ -232,6 +264,7 @@ class Camera2 extends CameraViewImpl {
             mImageReader.close();
             mImageReader = null;
         }
+        mCameraHandler.removeCallbacks(mReturnToContinuousAFRunnable);
     }
 
     @Override
@@ -345,6 +378,62 @@ class Camera2 extends CameraViewImpl {
     void setDisplayOrientation(int displayOrientation) {
         mDisplayOrientation = displayOrientation;
         mPreview.setDisplayOrientation(mDisplayOrientation);
+    }
+
+    @Override
+    boolean hasManualFocus() {
+        return isCameraOpened() && (isAutoFocusSupported() || isAutoExposureSupported());
+    }
+
+    @Override
+    void setFocusAt(int x, int y) {
+        mCallback.onFocusAt(x, y);
+        float points[] = new float[2];
+        points[0] = (float) x / mPreview.getWidth();
+        points[1] = (float) y / mPreview.getHeight();
+        Matrix rotationMatrix = new Matrix();
+        rotationMatrix.setRotate(mDisplayOrientation, 0.5f, 0.5f);
+        rotationMatrix.mapPoints(points);
+        if (mFacing == Constants.FACING_FRONT) {
+            points[0] = 1 - points[0];
+        }
+        if (mPreviewRequestBuilder != null) {
+            updateManualFocus(points[0], points[1]);
+            if (mCaptureSession != null) {
+                try {
+                    mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
+                            CaptureRequest.CONTROL_AF_TRIGGER_START);
+                    mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, null);
+                    mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
+                            CaptureRequest.CONTROL_AF_TRIGGER_IDLE);
+                    mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(),
+                            mCaptureCallback, null);
+                } catch (CameraAccessException e) {
+                    Log.e(TAG, "Failed to set manual focus.", e);
+                }
+            }
+            resumeContinuousAFAfterDelay(Constants.FOCUS_HOLD_MILLIS);
+        }
+    }
+
+    boolean isAutoFocusSupported() {
+        if (!isCameraOpened()) {
+            return false;
+        }
+        Integer maxAfRegions = mCameraCharacteristics.get(
+                CameraCharacteristics.CONTROL_MAX_REGIONS_AF);
+        // Auto-Focus is supported if the device supports one or more AF regions
+        return maxAfRegions != null && maxAfRegions > 0;
+    }
+
+    boolean isAutoExposureSupported() {
+        if (!isCameraOpened()) {
+            return false;
+        }
+        Integer maxAeRegions = mCameraCharacteristics.get(
+                CameraCharacteristics.CONTROL_MAX_REGIONS_AE);
+        // Auto-Exposure is supported if the device supports one or more AE regions
+        return maxAeRegions != null && maxAeRegions > 0;
     }
 
     /**
@@ -536,6 +625,37 @@ class Camera2 extends CameraViewImpl {
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
                     CaptureRequest.CONTROL_AF_MODE_OFF);
         }
+        if (hasManualFocus()) {
+            if (isAutoFocusSupported()) {
+                mAFRegions = AutoFocusHelper.getZeroWeightRegion();
+                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, mAFRegions);
+            }
+            if (isAutoExposureSupported()) {
+                mAERegions = AutoFocusHelper.getZeroWeightRegion();
+                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, mAERegions);
+            }
+        }
+    }
+
+    /**
+     * Updates the internal state of manual focus.
+     */
+    void updateManualFocus(float x, float y) {
+        @SuppressWarnings("ConstantConditions")
+        int sensorOrientation = mCameraCharacteristics.get(
+                CameraCharacteristics.SENSOR_ORIENTATION);
+        if (isAutoFocusSupported()) {
+            mAFRegions = AutoFocusHelper.afRegionsForNormalizedCoord(x, y, mCropRegion,
+                    sensorOrientation);
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, mAFRegions);
+        }
+        if (isAutoExposureSupported()) {
+            mAERegions = AutoFocusHelper.aeRegionsForNormalizedCoord(x, y, mCropRegion,
+                    sensorOrientation);
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, mAERegions);
+        }
+        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
+                CaptureRequest.CONTROL_AF_MODE_AUTO);
     }
 
     /**
@@ -645,6 +765,7 @@ class Camera2 extends CameraViewImpl {
                             unlockFocus();
                         }
                     }, null);
+            mCameraHandler.removeCallbacks(mReturnToContinuousAFRunnable);
         } catch (CameraAccessException e) {
             Log.e(TAG, "Cannot capture a still picture.", e);
         }
@@ -669,6 +790,14 @@ class Camera2 extends CameraViewImpl {
         } catch (CameraAccessException e) {
             Log.e(TAG, "Failed to restart camera preview.", e);
         }
+    }
+
+    /**
+     * Resume AF_MODE_CONTINUOUS_PICTURE after FOCUS_HOLD_MILLIS.
+     */
+    private void resumeContinuousAFAfterDelay(int millis) {
+        mCameraHandler.removeCallbacks(mReturnToContinuousAFRunnable);
+        mCameraHandler.postDelayed(mReturnToContinuousAFRunnable, millis);
     }
 
     /**
