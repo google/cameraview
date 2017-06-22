@@ -25,33 +25,6 @@
             <!-- The camera device faces the same direction as the device's screen. -->
             <enum name="front" value="1"/>
         </attr>
-
-        <!-- If the device supports more than one preview format, this value will control which one
-        is given priority.  It does NOT guarantee that format will be used-->
-        <attr name="preferredPreviewFormat" format="enum">
-            <enum name="UNKNOWN" value="0"/>
-            <enum name="RGB_565" value="4"/>
-            <enum name="YV12" value="0x32315659"/>
-            <enum name="Y8" value="0x20203859"/>
-            <enum name="Y16" value="0x20363159"/>
-            <enum name="NV16" value="0x10"/>
-            <enum name="NV21" value="0x11"/>
-            <enum name="YUY2" value="0x14"/>
-            <enum name="JPEG" value="0x100"/>
-            <enum name="YUV_420_888" value="0x23"/>
-            <enum name="YUV_422_888" value="0x27"/>
-            <enum name="YUV_444_888" value="0x28"/>
-            <enum name="FLEX_RGB_888" value="0x29"/>
-            <enum name="FLEX_RGBA_8888" value="0x2A"/>
-            <enum name="RAW_SENSOR" value="0x20"/>
-            <enum name="RAW_PRIVATE" value="0x24"/>
-            <enum name="RAW10" value="0x25"/>
-            <enum name="RAW12" value="0x26"/>
-            <enum name="DEPTH16" value="0x44363159"/>
-            <enum name="DEPTH_POINT_CLOUD" value="0x101"/>
-            <enum name="PRIVATE" value="0x22"/>
-        </attr>
-
         <!-- Aspect ratio of camera preview and pictures. -->
         <attr name="aspectRatio" format="string"/>
         <!-- Continuous auto focus mode. -->

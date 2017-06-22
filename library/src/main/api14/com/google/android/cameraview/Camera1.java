@@ -19,17 +19,11 @@ package com.google.android.cameraview;
 import android.annotation.SuppressLint;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
-import android.media.Image;
-import android.media.PreviewImage;
-import android.media.PreviewPlane;
 import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.support.v4.util.SparseArrayCompat;
-import android.util.Log;
 import android.view.SurfaceHolder;
 
 import java.io.IOException;
-import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
@@ -42,7 +36,6 @@ class Camera1 extends CameraViewImpl {
     private static final int INVALID_CAMERA_ID = -1;
 
     private static final SparseArrayCompat<String> FLASH_MODES = new SparseArrayCompat<>();
-    private static final String TAG = "Camera1";
 
     static {
         FLASH_MODES.put(Constants.FLASH_OFF, Camera.Parameters.FLASH_MODE_OFF);
@@ -77,39 +70,15 @@ class Camera1 extends CameraViewImpl {
     private int mFlash;
 
     private int mDisplayOrientation;
-    private Size previewSize;
-    private int mPreviewFormat;
 
-
-    Camera1(final Callback callback, PreviewImpl preview) {
+    Camera1(Callback callback, PreviewImpl preview) {
         super(callback, preview);
-
         preview.setCallback(new PreviewImpl.Callback() {
             @Override
             public void onSurfaceChanged() {
                 if (mCamera != null) {
                     setUpPreview();
                     adjustCameraParameters();
-
-                    mCamera.setPreviewCallback(new Camera.PreviewCallback() {
-                        @RequiresApi(19)
-                        @Override public void onPreviewFrame(byte[] data, Camera camera)
-                        {
-                            PreviewPlane pp = new PreviewPlane(0, 0, data);
-                            Image image = new PreviewImage( mCameraParameters.getPreviewFormat(),
-                                    new Image.Plane[]{pp},
-                                    mCameraParameters.getPreviewSize().width,
-                                    mCameraParameters.getPreviewSize().height,
-                                    new Date().getTime()
-                                    );
-
-                            callback.onPreviewFrame(image);
-                        }
-                    });
-                }
-                else
-                {
-                    Log.d(TAG, "Cannot set preview callback because mCamera == null");
                 }
             }
         });
@@ -136,13 +105,10 @@ class Camera1 extends CameraViewImpl {
         releaseCamera();
     }
 
-
-
     // Suppresses Camera#setPreviewTexture
     @SuppressLint("NewApi")
     void setUpPreview() {
         try {
-
             if (mPreview.getOutputClass() == SurfaceHolder.class) {
                 final boolean needsToStopPreview = mShowingPreview && Build.VERSION.SDK_INT < 14;
                 if (needsToStopPreview) {
@@ -163,24 +129,6 @@ class Camera1 extends CameraViewImpl {
     @Override
     boolean isCameraOpened() {
         return mCamera != null;
-    }
-
-
-    @Override
-    void setPreferredPreviewFormat(int imageFormat) {
-        if (mPreviewFormat == imageFormat) {
-            return;
-        }
-        mPreviewFormat = imageFormat;
-        if (isCameraOpened()) {
-            stop();
-            start();
-        }
-    }
-
-    @Override
-    public int getPreferredPreviewFormat() {
-        return mPreviewFormat;
     }
 
     @Override
@@ -386,10 +334,6 @@ class Camera1 extends CameraViewImpl {
         if (mShowingPreview) {
             mCamera.stopPreview();
         }
-
-        if(mCameraParameters.getSupportedPreviewFormats().contains(getPreferredPreviewFormat())) {
-            mCameraParameters.setPreviewFormat(getPreferredPreviewFormat());
-        }
         mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
         mCameraParameters.setPictureSize(pictureSize.getWidth(), pictureSize.getHeight());
         mCameraParameters.setRotation(calcCameraRotation(mDisplayOrientation));
@@ -534,6 +478,3 @@ class Camera1 extends CameraViewImpl {
     }
 
 }
-
-
-

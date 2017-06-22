@@ -16,7 +16,6 @@
 
 package com.google.android.cameraview;
 
-import android.media.Image;
 import android.view.View;
 
 import java.util.Set;
@@ -46,9 +45,6 @@ abstract class CameraViewImpl {
     abstract boolean isCameraOpened();
 
     abstract void setFacing(int facing);
-
-    abstract void setPreferredPreviewFormat(int imageFormat);
-    abstract int getPreferredPreviewFormat();
 
     abstract int getFacing();
 
@@ -81,7 +77,6 @@ abstract class CameraViewImpl {
 
         void onPictureTaken(byte[] data);
 
-        void onPreviewFrame(Image image);
     }
 
 }

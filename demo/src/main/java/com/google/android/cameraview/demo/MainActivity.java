@@ -20,8 +20,6 @@ import android.Manifest;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
-import android.graphics.ImageFormat;
-import android.media.Image;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -237,11 +235,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private CameraView.Callback mCallback
-            = new CameraView.Callback()
-    {
-        @Override
-        public void onPreviewFrame(CameraView cameraView, Image previewImage) {
-        }
+            = new CameraView.Callback() {
 
         @Override
         public void onCameraOpened(CameraView cameraView) {
