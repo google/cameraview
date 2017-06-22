@@ -19,6 +19,8 @@ package com.google.android.cameraview;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.ImageFormat;
+import android.media.Image;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -109,6 +111,11 @@ public class CameraView extends FrameLayout {
                 R.style.Widget_CameraView);
         mAdjustViewBounds = a.getBoolean(R.styleable.CameraView_android_adjustViewBounds, false);
         setFacing(a.getInt(R.styleable.CameraView_facing, FACING_BACK));
+
+        setPreviewFormat(a.getInt(R.styleable.CameraView_preferredPreviewFormat,
+                Build.VERSION.SDK_INT < 21 ? ImageFormat.NV21
+                        : ImageFormat.YUV_420_888));
+
         String aspectRatio = a.getString(R.styleable.CameraView_aspectRatio);
         if (aspectRatio != null) {
             setAspectRatio(AspectRatio.parse(aspectRatio));
@@ -126,6 +133,11 @@ public class CameraView extends FrameLayout {
             }
         };
     }
+
+    private void setPreviewFormat(int value) {
+        mImpl.setPreferredPreviewFormat(value);
+    }
+
 
     @NonNull
     private PreviewImpl createPreviewImpl(Context context) {
@@ -449,6 +461,13 @@ public class CameraView extends FrameLayout {
             }
         }
 
+        @Override
+        public void onPreviewFrame(Image previewImage) {
+            for (Callback callback : mCallbacks) {
+                callback.onPreviewFrame( CameraView.this, previewImage);
+            }
+        }
+
         public void reserveRequestLayoutOnOpen() {
             mRequestLayoutOnOpen = true;
         }
@@ -534,6 +553,18 @@ public class CameraView extends FrameLayout {
          * @param data       JPEG data.
          */
         public void onPictureTaken(CameraView cameraView, byte[] data) {
+        }
+
+        /**
+         * Called when a new preview frame is ready
+         * @param cameraView    the CameraView object
+         * @param previewImage  the preview image.  Packed/interleaved image formats (used by
+         *                      Camera 1 API) will have all their bytes stored on a single plane.
+         *                      For example, in an NV21 image,
+         *                      previewImage.getPlanes()[0].getBuffer() will return a byte array
+         *                      containing all the bytes for the Y,U, and V components.
+         */
+        public void onPreviewFrame(CameraView cameraView, Image previewImage ) {
         }
     }
 
