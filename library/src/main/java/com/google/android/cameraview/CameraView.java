@@ -20,7 +20,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.ImageFormat;
-import android.media.Image;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -462,9 +461,9 @@ public class CameraView extends FrameLayout {
         }
 
         @Override
-        public void onPreviewFrame(Image previewImage) {
+        public void onPreviewFrame(byte[] data, int width, int height, int format) {
             for (Callback callback : mCallbacks) {
-                callback.onPreviewFrame( CameraView.this, previewImage);
+                callback.onPreviewFrame( CameraView.this, data, width, height, format);
             }
         }
 
@@ -556,15 +555,17 @@ public class CameraView extends FrameLayout {
         }
 
         /**
-         * Called when a new preview frame is ready
+         * called when a new preview image is ready
+         *
          * @param cameraView    the CameraView object
-         * @param previewImage  the preview image.  Packed/interleaved image formats (used by
-         *                      Camera 1 API) will have all their bytes stored on a single plane.
-         *                      For example, in an NV21 image,
-         *                      previewImage.getPlanes()[0].getBuffer() will return a byte array
-         *                      containing all the bytes for the Y,U, and V components.
+         * @param data          the bytes of the image.  If the image has multiple planes, each
+         *                      plane will be concatenated.  Use the format, width, and height to
+         *                      calculate the size of each plane.
+         * @param width         width, in pixels, of the image
+         * @param height        height, in pixels, of the image
+         * @param format        a value from android.media.ImageFormat indicating the type of image
          */
-        public void onPreviewFrame(CameraView cameraView, Image previewImage ) {
+        public void onPreviewFrame(CameraView cameraView, byte[] data, int width, int height, int format ) {
         }
     }
 
