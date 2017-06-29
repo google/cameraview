@@ -102,6 +102,7 @@ public class MainActivity extends AppCompatActivity implements
             }
         }
     };
+    private FloatingActionButton mFab;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -111,10 +112,7 @@ public class MainActivity extends AppCompatActivity implements
         if (mCameraView != null) {
             mCameraView.addCallback(mCallback);
         }
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.take_picture);
-        if (fab != null) {
-            fab.setOnClickListener(mOnClickListener);
-        }
+        mFab = (FloatingActionButton) findViewById(R.id.take_picture);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         ActionBar actionBar = getSupportActionBar();
@@ -238,6 +236,14 @@ public class MainActivity extends AppCompatActivity implements
             = new CameraView.Callback() {
 
         @Override
+        public void onCameraConfigured(CameraView cameraView) {
+            super.onCameraConfigured(cameraView);
+            if (mFab != null) {
+                mFab.setOnClickListener(mOnClickListener);
+            }
+        }
+
+        @Override
         public void onCameraOpened(CameraView cameraView) {
             Log.d(TAG, "onCameraOpened");
         }
@@ -245,6 +251,9 @@ public class MainActivity extends AppCompatActivity implements
         @Override
         public void onCameraClosed(CameraView cameraView) {
             Log.d(TAG, "onCameraClosed");
+            if (mFab != null) {
+                mFab.setOnClickListener(null);
+            }
         }
 
         @Override

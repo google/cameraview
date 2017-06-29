@@ -443,6 +443,13 @@ public class CameraView extends FrameLayout {
         }
 
         @Override
+        public void onCameraConfigured() {
+            for (Callback callback : mCallbacks) {
+                callback.onCameraConfigured(CameraView.this);
+            }
+        }
+
+        @Override
         public void onPictureTaken(byte[] data) {
             for (Callback callback : mCallbacks) {
                 callback.onPictureTaken(CameraView.this, data);
@@ -534,6 +541,15 @@ public class CameraView extends FrameLayout {
          * @param data       JPEG data.
          */
         public void onPictureTaken(CameraView cameraView, byte[] data) {
+        }
+
+        /**
+         * Called when camera is configured and session is not null.
+         *
+         * @param cameraView The associated {@link CameraView}.
+         */
+        public void onCameraConfigured(CameraView cameraView) {
+
         }
     }
 
