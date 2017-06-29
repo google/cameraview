@@ -544,7 +544,7 @@ public class CameraView extends FrameLayout {
         }
 
         /**
-         * Called when camera is configured and session is not null.
+         * Called when camera is configured ready to take pictures.
          *
          * @param cameraView The associated {@link CameraView}.
          */
