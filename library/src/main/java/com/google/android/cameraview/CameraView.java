@@ -19,6 +19,7 @@ package com.google.android.cameraview;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.ImageFormat;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -109,6 +110,11 @@ public class CameraView extends FrameLayout {
                 R.style.Widget_CameraView);
         mAdjustViewBounds = a.getBoolean(R.styleable.CameraView_android_adjustViewBounds, false);
         setFacing(a.getInt(R.styleable.CameraView_facing, FACING_BACK));
+
+        setPreviewFormat(a.getInt(R.styleable.CameraView_preferredPreviewFormat,
+                Build.VERSION.SDK_INT < 21 ? ImageFormat.NV21
+                        : ImageFormat.YUV_420_888));
+
         String aspectRatio = a.getString(R.styleable.CameraView_aspectRatio);
         if (aspectRatio != null) {
             setAspectRatio(AspectRatio.parse(aspectRatio));
@@ -126,6 +132,11 @@ public class CameraView extends FrameLayout {
             }
         };
     }
+
+    private void setPreviewFormat(int value) {
+        mImpl.setPreferredPreviewFormat(value);
+    }
+
 
     @NonNull
     private PreviewImpl createPreviewImpl(Context context) {
@@ -259,6 +270,7 @@ public class CameraView extends FrameLayout {
      */
     public void stop() {
         mImpl.stop();
+        mCallbacks.clear();
     }
 
     /**
@@ -424,6 +436,11 @@ public class CameraView extends FrameLayout {
             mCallbacks.remove(callback);
         }
 
+        public void clear()
+        {
+            mCallbacks.clear();
+        }
+
         @Override
         public void onCameraOpened() {
             if (mRequestLayoutOnOpen) {
@@ -446,6 +463,13 @@ public class CameraView extends FrameLayout {
         public void onPictureTaken(byte[] data) {
             for (Callback callback : mCallbacks) {
                 callback.onPictureTaken(CameraView.this, data);
+            }
+        }
+
+        @Override
+        public void onPreviewFrame(byte[] data, int width, int height, int format) {
+            for (Callback callback : mCallbacks) {
+                callback.onPreviewFrame( CameraView.this, data, width, height, format);
             }
         }
 
@@ -534,6 +558,20 @@ public class CameraView extends FrameLayout {
          * @param data       JPEG data.
          */
         public void onPictureTaken(CameraView cameraView, byte[] data) {
+        }
+
+        /**
+         * called when a new preview image is ready
+         *
+         * @param cameraView    the CameraView object
+         * @param data          the bytes of the image.  If the image has multiple planes, each
+         *                      plane will be concatenated.  Use the format, width, and height to
+         *                      calculate the size of each plane.
+         * @param width         width, in pixels, of the image
+         * @param height        height, in pixels, of the image
+         * @param format        a value from android.media.ImageFormat indicating the type of image
+         */
+        public void onPreviewFrame(CameraView cameraView, byte[] data, int width, int height, int format ) {
         }
     }
 

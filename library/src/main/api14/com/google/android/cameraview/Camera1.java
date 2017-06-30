@@ -20,7 +20,9 @@ import android.annotation.SuppressLint;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.os.Build;
+import android.support.annotation.RequiresApi;
 import android.support.v4.util.SparseArrayCompat;
+import android.util.Log;
 import android.view.SurfaceHolder;
 
 import java.io.IOException;
@@ -36,6 +38,7 @@ class Camera1 extends CameraViewImpl {
     private static final int INVALID_CAMERA_ID = -1;
 
     private static final SparseArrayCompat<String> FLASH_MODES = new SparseArrayCompat<>();
+    private static final String TAG = "Camera1";
 
     static {
         FLASH_MODES.put(Constants.FLASH_OFF, Camera.Parameters.FLASH_MODE_OFF);
@@ -70,15 +73,37 @@ class Camera1 extends CameraViewImpl {
     private int mFlash;
 
     private int mDisplayOrientation;
+    private int mPreviewFormat;
 
-    Camera1(Callback callback, PreviewImpl preview) {
+    Camera.PreviewCallback mPreviewCallback;
+
+
+    Camera1(final Callback callback, PreviewImpl preview) {
         super(callback, preview);
+
+        mPreviewCallback = new Camera.PreviewCallback() {
+            @Override public void onPreviewFrame(byte[] data, Camera camera)
+            {
+                callback.onPreviewFrame( data,
+                        mCameraParameters.getPreviewSize().width,
+                        mCameraParameters.getPreviewSize().height,
+                        mCameraParameters.getPreviewFormat());
+            }
+        };
+
+
         preview.setCallback(new PreviewImpl.Callback() {
             @Override
             public void onSurfaceChanged() {
                 if (mCamera != null) {
                     setUpPreview();
                     adjustCameraParameters();
+
+                    mCamera.setPreviewCallback(mPreviewCallback);
+                }
+                else
+                {
+                    Log.d(TAG, "Cannot set preview callback because mCamera == null");
                 }
             }
         });
@@ -99,16 +124,21 @@ class Camera1 extends CameraViewImpl {
     @Override
     void stop() {
         if (mCamera != null) {
+            mCamera.setPreviewCallback(null);
             mCamera.stopPreview();
         }
+
         mShowingPreview = false;
         releaseCamera();
     }
+
+
 
     // Suppresses Camera#setPreviewTexture
     @SuppressLint("NewApi")
     void setUpPreview() {
         try {
+
             if (mPreview.getOutputClass() == SurfaceHolder.class) {
                 final boolean needsToStopPreview = mShowingPreview && Build.VERSION.SDK_INT < 14;
                 if (needsToStopPreview) {
@@ -129,6 +159,24 @@ class Camera1 extends CameraViewImpl {
     @Override
     boolean isCameraOpened() {
         return mCamera != null;
+    }
+
+
+    @Override
+    void setPreferredPreviewFormat(int imageFormat) {
+        if (mPreviewFormat == imageFormat) {
+            return;
+        }
+        mPreviewFormat = imageFormat;
+        if (isCameraOpened()) {
+            stop();
+            start();
+        }
+    }
+
+    @Override
+    public int getPreferredPreviewFormat() {
+        return mPreviewFormat;
     }
 
     @Override
@@ -333,6 +381,10 @@ class Camera1 extends CameraViewImpl {
         final Size pictureSize = mPictureSizes.sizes(mAspectRatio).last();
         if (mShowingPreview) {
             mCamera.stopPreview();
+        }
+
+        if(mCameraParameters.getSupportedPreviewFormats().contains(getPreferredPreviewFormat())) {
+            mCameraParameters.setPreviewFormat(getPreferredPreviewFormat());
         }
         mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
         mCameraParameters.setPictureSize(pictureSize.getWidth(), pictureSize.getHeight());
