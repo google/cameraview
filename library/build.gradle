@@ -38,12 +38,18 @@ android {
     }
 }
 
+
 dependencies {
     compile "com.android.support:support-annotations:$supportLibraryVersion"
     compile "com.android.support:support-v4:$supportLibraryVersion"
 
+
     // Tests
+    testCompile 'org.hamcrest:hamcrest-core:1.3'
     testCompile 'junit:junit:4.12'
+
+    androidTestCompile 'org.hamcrest:hamcrest-core:1.3'
+    androidTestCompile 'junit:junit:4.12'
     androidTestCompile('com.android.support.test:runner:0.5') {
         exclude module: 'support-annotations'
     }

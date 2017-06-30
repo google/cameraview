@@ -19,9 +19,6 @@ package com.google.android.cameraview;
 import android.annotation.SuppressLint;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
-import android.media.Image;
-import android.media.PreviewImage;
-import android.media.PreviewPlane;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.support.v4.util.SparseArrayCompat;
@@ -29,7 +26,6 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 
 import java.io.IOException;
-import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
@@ -77,12 +73,24 @@ class Camera1 extends CameraViewImpl {
     private int mFlash;
 
     private int mDisplayOrientation;
-    private Size previewSize;
     private int mPreviewFormat;
+
+    Camera.PreviewCallback mPreviewCallback;
 
 
     Camera1(final Callback callback, PreviewImpl preview) {
         super(callback, preview);
+
+        mPreviewCallback = new Camera.PreviewCallback() {
+            @Override public void onPreviewFrame(byte[] data, Camera camera)
+            {
+                callback.onPreviewFrame( data,
+                        mCameraParameters.getPreviewSize().width,
+                        mCameraParameters.getPreviewSize().height,
+                        mCameraParameters.getPreviewFormat());
+            }
+        };
+
 
         preview.setCallback(new PreviewImpl.Callback() {
             @Override
@@ -91,21 +99,7 @@ class Camera1 extends CameraViewImpl {
                     setUpPreview();
                     adjustCameraParameters();
 
-                    mCamera.setPreviewCallback(new Camera.PreviewCallback() {
-                        @RequiresApi(19)
-                        @Override public void onPreviewFrame(byte[] data, Camera camera)
-                        {
-                            PreviewPlane pp = new PreviewPlane(0, 0, data);
-                            Image image = new PreviewImage( mCameraParameters.getPreviewFormat(),
-                                    new Image.Plane[]{pp},
-                                    mCameraParameters.getPreviewSize().width,
-                                    mCameraParameters.getPreviewSize().height,
-                                    new Date().getTime()
-                                    );
-
-                            callback.onPreviewFrame(image);
-                        }
-                    });
+                    mCamera.setPreviewCallback(mPreviewCallback);
                 }
                 else
                 {
@@ -130,8 +124,10 @@ class Camera1 extends CameraViewImpl {
     @Override
     void stop() {
         if (mCamera != null) {
+            mCamera.setPreviewCallback(null);
             mCamera.stopPreview();
         }
+
         mShowingPreview = false;
         releaseCamera();
     }

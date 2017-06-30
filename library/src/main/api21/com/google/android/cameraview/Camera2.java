@@ -178,7 +178,9 @@ class Camera2 extends CameraViewImpl {
                         outputStream.write(buffers.get(i), 0, buffers.get(i).length);
                     }
 
-                    mCallback.onPreviewFrame(image);
+                    mCallback.onPreviewFrame(
+                            outputStream.toByteArray(), image.getWidth(), image.getHeight(), image.getFormat()
+                    );
                 } finally {
                     image.close();
                 }

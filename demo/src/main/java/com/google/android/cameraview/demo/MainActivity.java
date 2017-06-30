@@ -240,7 +240,7 @@ public class MainActivity extends AppCompatActivity implements
             = new CameraView.Callback()
     {
         @Override
-        public void onPreviewFrame(CameraView cameraView, Image previewImage) {
+        public void onPreviewFrame(CameraView cameraView, byte[] data, int width, int height, int format) {
         }
 
         @Override
