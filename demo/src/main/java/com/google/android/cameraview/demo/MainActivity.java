@@ -277,6 +277,11 @@ public class MainActivity extends AppCompatActivity implements
             });
         }
 
+        @Override
+        public void notPermission() {
+            Toast.makeText(MainActivity.this, R.string.camera_permission_not_granted,
+                    Toast.LENGTH_SHORT).show();
+        }
     };
 
     public static class ConfirmationDialogFragment extends DialogFragment {
