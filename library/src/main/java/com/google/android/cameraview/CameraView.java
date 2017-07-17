@@ -29,6 +29,8 @@ import android.support.v4.os.ParcelableCompat;
 import android.support.v4.os.ParcelableCompatCreatorCallbacks;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
+import android.view.View;
 import android.widget.FrameLayout;
 
 import java.lang.annotation.Retention;
@@ -125,6 +127,21 @@ public class CameraView extends FrameLayout {
                 mImpl.setDisplayOrientation(displayOrientation);
             }
         };
+
+        final FocusMarkerLayout focusMarkerLayout = new FocusMarkerLayout(getContext());
+        addView(focusMarkerLayout);
+        focusMarkerLayout.setOnTouchListener(new OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent motionEvent) {
+                int action = motionEvent.getAction();
+                if (action == MotionEvent.ACTION_UP) {
+                    focusMarkerLayout.focus(motionEvent.getX(), motionEvent.getY());
+                }
+
+                preview.getView().dispatchTouchEvent(motionEvent);
+                return true;
+            }
+        });
     }
 
     @NonNull
@@ -449,6 +466,13 @@ public class CameraView extends FrameLayout {
             }
         }
 
+        @Override
+        public void notPermission() {
+            for (Callback callback : mCallbacks) {
+                callback.notPermission();
+            }
+        }
+
         public void reserveRequestLayoutOnOpen() {
             mRequestLayoutOnOpen = true;
         }
@@ -534,6 +558,9 @@ public class CameraView extends FrameLayout {
          * @param data       JPEG data.
          */
         public void onPictureTaken(CameraView cameraView, byte[] data) {
+        }
+
+        public void notPermission() {
         }
     }
 

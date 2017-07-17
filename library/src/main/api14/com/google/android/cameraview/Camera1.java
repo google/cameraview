@@ -17,13 +17,19 @@
 package com.google.android.cameraview;
 
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
+import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.os.Build;
+import android.os.Handler;
 import android.support.v4.util.SparseArrayCompat;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
+import android.view.View;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
@@ -71,6 +77,10 @@ class Camera1 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
+    private Handler mHandler = new Handler();
+
+    private Camera.AutoFocusCallback mAutofocusCallback;
+
     Camera1(Callback callback, PreviewImpl preview) {
         super(callback, preview);
         preview.setCallback(new PreviewImpl.Callback() {
@@ -86,14 +96,19 @@ class Camera1 extends CameraViewImpl {
 
     @Override
     boolean start() {
-        chooseCamera();
-        openCamera();
-        if (mPreview.isReady()) {
-            setUpPreview();
+        try {
+            chooseCamera();
+            openCamera();
+            if (mPreview.isReady()) {
+                setUpPreview();
+            }
+            mShowingPreview = true;
+            mCamera.startPreview();
+            return true;
+        } catch (Exception e) {
+            mCallback.notPermission();
+            return false;
         }
-        mShowingPreview = true;
-        mCamera.startPreview();
-        return true;
     }
 
     @Override
@@ -102,6 +117,8 @@ class Camera1 extends CameraViewImpl {
             mCamera.stopPreview();
         }
         mShowingPreview = false;
+        if (mHandler != null)
+            mHandler.removeCallbacksAndMessages(null);
         releaseCamera();
     }
 
@@ -438,12 +455,16 @@ class Camera1 extends CameraViewImpl {
         if (isCameraOpened()) {
             final List<String> modes = mCameraParameters.getSupportedFocusModes();
             if (autoFocus && modes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
+                attachFocusTapListener();
                 mCameraParameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
             } else if (modes.contains(Camera.Parameters.FOCUS_MODE_FIXED)) {
+                detachFocusTapListener();
                 mCameraParameters.setFocusMode(Camera.Parameters.FOCUS_MODE_FIXED);
             } else if (modes.contains(Camera.Parameters.FOCUS_MODE_INFINITY)) {
+                detachFocusTapListener();
                 mCameraParameters.setFocusMode(Camera.Parameters.FOCUS_MODE_INFINITY);
             } else {
+                detachFocusTapListener();
                 mCameraParameters.setFocusMode(modes.get(0));
             }
             return true;
@@ -474,6 +495,120 @@ class Camera1 extends CameraViewImpl {
         } else {
             mFlash = flash;
             return false;
+        }
+    }
+
+    @TargetApi(14)
+    private void attachFocusTapListener() {
+        mPreview.getView().setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    if (mCamera != null) {
+                        Camera.Parameters parameters = mCamera.getParameters();
+                        String focusMode = parameters.getFocusMode();
+                        Rect rect = calculateFocusArea(event.getX(), event.getY());
+                        List<Camera.Area> meteringAreas = new ArrayList<>();
+                        meteringAreas.add(new Camera.Area(rect, getFocusMeteringAreaWeight()));
+                        if (parameters.getMaxNumFocusAreas() != 0 && focusMode != null &&
+                                (focusMode.equals(Camera.Parameters.FOCUS_MODE_AUTO) ||
+                                        focusMode.equals(Camera.Parameters.FOCUS_MODE_MACRO) ||
+                                        focusMode.equals(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE) ||
+                                        focusMode.equals(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO))
+                                ) {
+                            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+                            parameters.setFocusAreas(meteringAreas);
+                            if (parameters.getMaxNumMeteringAreas() > 0) {
+                                parameters.setMeteringAreas(meteringAreas);
+                            }
+                            if(!parameters.getSupportedFocusModes().contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
+                                return false; //cannot autoFocus
+                            }
+                            mCamera.setParameters(parameters);
+                            mCamera.autoFocus(new Camera.AutoFocusCallback() {
+                                @Override
+                                public void onAutoFocus(boolean success, Camera camera) {
+                                    resetFocus(success, camera);
+                                }
+                            });
+                        } else if (parameters.getMaxNumMeteringAreas() > 0) {
+                            if(!parameters.getSupportedFocusModes().contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
+                                return false; //cannot autoFocus
+                            }
+                            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+                            parameters.setFocusAreas(meteringAreas);
+                            parameters.setMeteringAreas(meteringAreas);
+
+                            mCamera.setParameters(parameters);
+                            mCamera.autoFocus(new Camera.AutoFocusCallback() {
+                                @Override
+                                public void onAutoFocus(boolean success, Camera camera) {
+                                    resetFocus(success, camera);
+                                }
+                            });
+                        } else {
+                            mCamera.autoFocus(new Camera.AutoFocusCallback() {
+                                @Override
+                                public void onAutoFocus(boolean success, Camera camera) {
+                                    if (mAutofocusCallback != null) {
+                                        mAutofocusCallback.onAutoFocus(success, camera);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+                return true;
+            }
+        });
+    }
+
+    @TargetApi(14)
+    private void resetFocus(final boolean success, final Camera camera) {
+        mHandler.removeCallbacksAndMessages(null);
+        mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (camera != null) {
+                    camera.cancelAutoFocus();
+                    Camera.Parameters params = camera.getParameters();
+                    if (params.getFocusMode() != Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE) {
+                        params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
+                        params.setFocusAreas(null);
+                        params.setMeteringAreas(null);
+                        camera.setParameters(params);
+                    }
+
+                    if (mAutofocusCallback != null) {
+                        mAutofocusCallback.onAutoFocus(success, camera);
+                    }
+                }
+            }
+        }, DELAY_MILLIS_BEFORE_RESETTING_FOCUS);
+    }
+
+    Rect calculateFocusArea(float x, float y) {
+        int buffer = getFocusAreaSize() / 2;
+        int centerX = calculateCenter(x, mPreview.getView().getWidth(), buffer);
+        int centerY = calculateCenter(y, mPreview.getView().getHeight(), buffer);
+        return new Rect(
+                centerX - buffer,
+                centerY - buffer,
+                centerX + buffer,
+                centerY + buffer
+        );
+    }
+
+    static int calculateCenter(float coord, int dimen, int buffer) {
+        int normalized = (int) ((coord / dimen) * 2000 - 1000);
+        if (Math.abs(normalized) + buffer > 1000) {
+            if (normalized > 0) {
+                return 1000 - buffer;
+            } else {
+                return -1000 + buffer;
+            }
+        } else {
+            return normalized;
         }
     }
 
