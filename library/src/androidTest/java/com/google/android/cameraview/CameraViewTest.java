@@ -17,8 +17,6 @@
 package com.google.android.cameraview;
 
 import static android.support.test.espresso.Espresso.onView;
-import static android.support.test.espresso.Espresso.registerIdlingResources;
-import static android.support.test.espresso.Espresso.unregisterIdlingResources;
 import static android.support.test.espresso.assertion.ViewAssertions.matches;
 import static android.support.test.espresso.matcher.ViewMatchers.assertThat;
 import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
@@ -30,14 +28,11 @@ import static com.google.android.cameraview.CameraViewMatchers.hasAspectRatio;
 
 import static junit.framework.Assert.assertFalse;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 import android.graphics.Bitmap;
 import android.os.SystemClock;
+import android.support.test.espresso.IdlingRegistry;
 import android.support.test.espresso.IdlingResource;
 import android.support.test.espresso.NoMatchingViewException;
 import android.support.test.espresso.UiController;
@@ -80,12 +75,12 @@ public class CameraViewTest {
     public void setUpIdlingResource() {
         mCameraViewIdlingResource = new CameraViewIdlingResource(
                 (CameraView) rule.getActivity().findViewById(R.id.camera));
-        registerIdlingResources(mCameraViewIdlingResource);
+        IdlingRegistry.getInstance().register(mCameraViewIdlingResource);
     }
 
     @After
     public void tearDownIdlingResource() throws Exception {
-        unregisterIdlingResources(mCameraViewIdlingResource);
+        IdlingRegistry.getInstance().unregister(mCameraViewIdlingResource);
         mCameraViewIdlingResource.close();
     }
 
@@ -112,7 +107,7 @@ public class CameraViewTest {
 
     @Test
     public void testAspectRatio() {
-        final CameraView cameraView = (CameraView) rule.getActivity().findViewById(R.id.camera);
+        final CameraView cameraView = rule.getActivity().findViewById(R.id.camera);
         final Set<AspectRatio> ratios = cameraView.getSupportedAspectRatios();
         for (AspectRatio ratio : ratios) {
             onView(withId(R.id.camera))
@@ -232,13 +227,13 @@ public class CameraViewTest {
                     }
                 });
         try {
-            registerIdlingResources(resource);
+            IdlingRegistry.getInstance().register(resource);
             onView(withId(R.id.camera))
                     .perform(waitFor(1000))
                     .check(showingPreview());
             assertThat("Didn't receive valid JPEG data.", resource.receivedValidJpeg(), is(true));
         } finally {
-            unregisterIdlingResources(resource);
+            IdlingRegistry.getInstance().unregister(resource);
             resource.close();
         }
     }
@@ -256,11 +251,8 @@ public class CameraViewTest {
         return new ViewAssertion() {
             @Override
             public void check(View view, NoMatchingViewException noViewFoundException) {
-                if (android.os.Build.VERSION.SDK_INT < 14) {
-                    return;
-                }
                 CameraView cameraView = (CameraView) view;
-                TextureView textureView = (TextureView) cameraView.findViewById(R.id.texture_view);
+                TextureView textureView = cameraView.findViewById(R.id.texture_view);
                 Bitmap bitmap = textureView.getBitmap();
                 int topLeft = bitmap.getPixel(0, 0);
                 int center = bitmap.getPixel(bitmap.getWidth() / 2, bitmap.getHeight() / 2);

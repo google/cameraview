@@ -121,7 +121,7 @@ public class AspectRatioFragment extends DialogFragment {
                 view = LayoutInflater.from(parent.getContext())
                         .inflate(android.R.layout.simple_list_item_1, parent, false);
                 holder = new AspectRatioAdapter.ViewHolder();
-                holder.text = (TextView) view.findViewById(android.R.id.text1);
+                holder.text = view.findViewById(android.R.id.text1);
                 view.setTag(holder);
             } else {
                 holder = (AspectRatioAdapter.ViewHolder) view.getTag();

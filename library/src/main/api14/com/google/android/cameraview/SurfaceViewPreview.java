@@ -30,7 +30,7 @@ class SurfaceViewPreview extends PreviewImpl {
 
     SurfaceViewPreview(Context context, ViewGroup parent) {
         final View view = View.inflate(context, R.layout.surface_view, parent);
-        mSurfaceView = (SurfaceView) view.findViewById(R.id.surface_view);
+        mSurfaceView = view.findViewById(R.id.surface_view);
         final SurfaceHolder holder = mSurfaceView.getHolder();
         //noinspection deprecation
         holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
