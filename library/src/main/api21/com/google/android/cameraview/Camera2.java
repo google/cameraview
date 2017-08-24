@@ -40,6 +40,7 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.SortedSet;
 
+@SuppressWarnings("MissingPermission")
 @TargetApi(21)
 class Camera2 extends CameraViewImpl {
 
@@ -51,6 +52,16 @@ class Camera2 extends CameraViewImpl {
         INTERNAL_FACINGS.put(Constants.FACING_BACK, CameraCharacteristics.LENS_FACING_BACK);
         INTERNAL_FACINGS.put(Constants.FACING_FRONT, CameraCharacteristics.LENS_FACING_FRONT);
     }
+
+    /**
+     * Max preview width that is guaranteed by Camera2 API
+     */
+    private static final int MAX_PREVIEW_WIDTH = 1920;
+
+    /**
+     * Max preview height that is guaranteed by Camera2 API
+     */
+    private static final int MAX_PREVIEW_HEIGHT = 1080;
 
     private final CameraManager mCameraManager;
 
@@ -258,6 +269,7 @@ class Camera2 extends CameraViewImpl {
             return false;
         }
         mAspectRatio = ratio;
+        prepareImageReader();
         if (mCaptureSession != null) {
             mCaptureSession.close();
             mCaptureSession = null;
@@ -406,10 +418,19 @@ class Camera2 extends CameraViewImpl {
         }
         mPreviewSizes.clear();
         for (android.util.Size size : map.getOutputSizes(mPreview.getOutputClass())) {
-            mPreviewSizes.add(new Size(size.getWidth(), size.getHeight()));
+            int width = size.getWidth();
+            int height = size.getHeight();
+            if (width <= MAX_PREVIEW_WIDTH && height <= MAX_PREVIEW_HEIGHT) {
+                mPreviewSizes.add(new Size(width, height));
+            }
         }
         mPictureSizes.clear();
         collectPictureSizes(mPictureSizes, map);
+        for (AspectRatio ratio : mPreviewSizes.ratios()) {
+            if (!mPictureSizes.ratios().contains(ratio)) {
+                mPreviewSizes.remove(ratio);
+            }
+        }
 
         if (!mPreviewSizes.ratios().contains(mAspectRatio)) {
             mAspectRatio = mPreviewSizes.ratios().iterator().next();
@@ -423,6 +444,9 @@ class Camera2 extends CameraViewImpl {
     }
 
     private void prepareImageReader() {
+        if (mImageReader != null) {
+            mImageReader.close();
+        }
         Size largest = mPictureSizes.sizes(mAspectRatio).last();
         mImageReader = ImageReader.newInstance(largest.getWidth(), largest.getHeight(),
                 ImageFormat.JPEG, /* maxImages */ 2);
@@ -480,7 +504,8 @@ class Camera2 extends CameraViewImpl {
             surfaceShorter = surfaceHeight;
         }
         SortedSet<Size> candidates = mPreviewSizes.sizes(mAspectRatio);
-        // Pick the smallest of those big enough.
+
+        // Pick the smallest of those big enough
         for (Size size : candidates) {
             if (size.getWidth() >= surfaceLonger && size.getHeight() >= surfaceShorter) {
                 return size;

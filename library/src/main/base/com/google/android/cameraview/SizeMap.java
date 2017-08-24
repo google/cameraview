@@ -54,6 +54,15 @@ class SizeMap {
         return true;
     }
 
+    /**
+     * Removes the specified aspect ratio and all sizes associated with it.
+     *
+     * @param ratio The aspect ratio to be removed.
+     */
+    public void remove(AspectRatio ratio) {
+        mRatios.remove(ratio);
+    }
+
     Set<AspectRatio> ratios() {
         return mRatios.keySet();
     }
