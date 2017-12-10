@@ -19,6 +19,7 @@ package com.google.android.cameraview;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.media.CamcorderProfile;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -29,6 +30,7 @@ import android.support.v4.os.ParcelableCompat;
 import android.support.v4.os.ParcelableCompatCreatorCallbacks;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
+import android.view.View;
 import android.widget.FrameLayout;
 
 import java.lang.annotation.Retention;
@@ -499,6 +501,27 @@ public class CameraView extends FrameLayout {
             }
         }
 
+        @Override
+        public void onVideoRecorded(String path) {
+            for (Callback callback : mCallbacks) {
+                callback.onVideoRecorded(CameraView.this, path);
+            }
+        }
+
+        @Override
+        public void onFramePreview(byte[] data, int width, int height, int orientation) {
+            for (Callback callback : mCallbacks) {
+                callback.onFramePreview(CameraView.this, data, width, height, orientation);
+            }
+        }
+
+        @Override
+        public void onMountError() {
+            for (Callback callback : mCallbacks) {
+                callback.onMountError(CameraView.this);
+            }
+        }
+
         public void reserveRequestLayoutOnOpen() {
             mRequestLayoutOnOpen = true;
         }
@@ -585,6 +608,20 @@ public class CameraView extends FrameLayout {
          */
         public void onPictureTaken(CameraView cameraView, byte[] data) {
         }
+
+        /**
+         * Called when a video is recorded.
+         *
+         * @param cameraView The associated {@link CameraView}.
+         * @param path       Path to recoredd video file.
+         */
+        public void onVideoRecorded(CameraView cameraView, String path) {
+        }
+
+        public void onFramePreview(CameraView cameraView, byte[] data, int width, int height, int orientation) {
+        }
+
+        public void onMountError(CameraView cameraView) {}
     }
 
 }
