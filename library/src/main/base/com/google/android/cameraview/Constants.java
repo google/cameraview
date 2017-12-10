@@ -38,4 +38,5 @@ public interface Constants {
     int WB_SHADOW = 3;
     int WB_FLUORESCENT = 4;
     int WB_INCANDESCENT = 5;
+
 }

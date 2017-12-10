@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @SuppressWarnings("deprecation")
 class Camera1 extends CameraViewImpl implements MediaRecorder.OnInfoListener,
-        MediaRecorder.OnErrorListener, Camera.PreviewCallback {
+                                                MediaRecorder.OnErrorListener, Camera.PreviewCallback {
 
     private static final int INVALID_CAMERA_ID = -1;
 
@@ -52,12 +52,12 @@ class Camera1 extends CameraViewImpl implements MediaRecorder.OnInfoListener,
     private static final SparseArrayCompat<String> WB_MODES = new SparseArrayCompat<>();
 
     static {
-        WB_MODES.put(Constants.WB_AUTO, Camera.Parameters.WHITE_BALANCE_AUTO);
-        WB_MODES.put(Constants.WB_CLOUDY, Camera.Parameters.WHITE_BALANCE_CLOUDY_DAYLIGHT);
-        WB_MODES.put(Constants.WB_SUNNY, Camera.Parameters.WHITE_BALANCE_DAYLIGHT);
-        WB_MODES.put(Constants.WB_SHADOW, Camera.Parameters.WHITE_BALANCE_SHADE);
-        WB_MODES.put(Constants.WB_FLUORESCENT, Camera.Parameters.WHITE_BALANCE_FLUORESCENT);
-        WB_MODES.put(Constants.WB_INCANDESCENT, Camera.Parameters.WHITE_BALANCE_INCANDESCENT);
+      WB_MODES.put(Constants.WB_AUTO, Camera.Parameters.WHITE_BALANCE_AUTO);
+      WB_MODES.put(Constants.WB_CLOUDY, Camera.Parameters.WHITE_BALANCE_CLOUDY_DAYLIGHT);
+      WB_MODES.put(Constants.WB_SUNNY, Camera.Parameters.WHITE_BALANCE_DAYLIGHT);
+      WB_MODES.put(Constants.WB_SHADOW, Camera.Parameters.WHITE_BALANCE_SHADE);
+      WB_MODES.put(Constants.WB_FLUORESCENT, Camera.Parameters.WHITE_BALANCE_FLUORESCENT);
+      WB_MODES.put(Constants.WB_INCANDESCENT, Camera.Parameters.WHITE_BALANCE_INCANDESCENT);
     }
 
     private int mCameraId;
@@ -108,18 +108,27 @@ class Camera1 extends CameraViewImpl implements MediaRecorder.OnInfoListener,
                     adjustCameraParameters();
                 }
             }
+
+            @Override
+            public void onSurfaceDestroyed() {
+              stop();
+            }
         });
     }
 
     @Override
     boolean start() {
         chooseCamera();
-        openCamera();
+        if (!openCamera()) {
+            mCallback.onMountError();
+            // returning false will result in invoking this method again
+            return true;
+        }
         if (mPreview.isReady()) {
             setUpPreview();
         }
         mShowingPreview = true;
-        mCamera.startPreview();
+        startCameraPreview();
         return true;
     }
 
@@ -127,8 +136,19 @@ class Camera1 extends CameraViewImpl implements MediaRecorder.OnInfoListener,
     void stop() {
         if (mCamera != null) {
             mCamera.stopPreview();
+            mCamera.setPreviewCallback(null);
         }
         mShowingPreview = false;
+        if (mMediaRecorder != null) {
+            mMediaRecorder.stop();
+            mMediaRecorder.release();
+            mMediaRecorder = null;
+
+            if (mIsRecording) {
+                mCallback.onVideoRecorded(mVideoPath);
+                mIsRecording = false;
+            }
+        }
         releaseCamera();
     }
 
@@ -143,13 +163,20 @@ class Camera1 extends CameraViewImpl implements MediaRecorder.OnInfoListener,
                 }
                 mCamera.setPreviewDisplay(mPreview.getSurfaceHolder());
                 if (needsToStopPreview) {
-                    mCamera.startPreview();
+                    startCameraPreview();
                 }
             } else {
                 mCamera.setPreviewTexture((SurfaceTexture) mPreview.getSurfaceTexture());
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void startCameraPreview() {
+        mCamera.startPreview();
+        if (mIsScanning) {
+            mCamera.setPreviewCallback(this);
         }
     }
 
@@ -322,9 +349,12 @@ class Camera1 extends CameraViewImpl implements MediaRecorder.OnInfoListener,
                 @Override
                 public void onPictureTaken(byte[] data, Camera camera) {
                     isPictureCaptureInProgress.set(false);
-                    mCallback.onPictureTaken(data);
                     camera.cancelAutoFocus();
                     camera.startPreview();
+                    if (mIsScanning) {
+                        camera.setPreviewCallback(Camera1.this);
+                    }
+                    mCallback.onPictureTaken(data);
                 }
             });
         }
@@ -372,7 +402,7 @@ class Camera1 extends CameraViewImpl implements MediaRecorder.OnInfoListener,
             }
             mCamera.setDisplayOrientation(calcDisplayOrientation(displayOrientation));
             if (needsToStopPreview) {
-                mCamera.startPreview();
+                startCameraPreview();
             }
         }
     }
@@ -391,29 +421,34 @@ class Camera1 extends CameraViewImpl implements MediaRecorder.OnInfoListener,
         mCameraId = INVALID_CAMERA_ID;
     }
 
-    private void openCamera() {
+    private boolean openCamera() {
         if (mCamera != null) {
             releaseCamera();
         }
-        mCamera = Camera.open(mCameraId);
-        mCameraParameters = mCamera.getParameters();
-        // Supported preview sizes
-        mPreviewSizes.clear();
-        for (Camera.Size size : mCameraParameters.getSupportedPreviewSizes()) {
-            mPreviewSizes.add(new Size(size.width, size.height));
+        try {
+            mCamera = Camera.open(mCameraId);
+            mCameraParameters = mCamera.getParameters();
+            // Supported preview sizes
+            mPreviewSizes.clear();
+            for (Camera.Size size : mCameraParameters.getSupportedPreviewSizes()) {
+                mPreviewSizes.add(new Size(size.width, size.height));
+            }
+            // Supported picture sizes;
+            mPictureSizes.clear();
+            for (Camera.Size size : mCameraParameters.getSupportedPictureSizes()) {
+                mPictureSizes.add(new Size(size.width, size.height));
+            }
+            // AspectRatio
+            if (mAspectRatio == null) {
+                mAspectRatio = Constants.DEFAULT_ASPECT_RATIO;
+            }
+            adjustCameraParameters();
+            mCamera.setDisplayOrientation(calcDisplayOrientation(mDisplayOrientation));
+            mCallback.onCameraOpened();
+            return true;
+        } catch (RuntimeException e) {
+            return false;
         }
-        // Supported picture sizes;
-        mPictureSizes.clear();
-        for (Camera.Size size : mCameraParameters.getSupportedPictureSizes()) {
-            mPictureSizes.add(new Size(size.width, size.height));
-        }
-        // AspectRatio
-        if (mAspectRatio == null) {
-            mAspectRatio = Constants.DEFAULT_ASPECT_RATIO;
-        }
-        adjustCameraParameters();
-        mCamera.setDisplayOrientation(calcDisplayOrientation(mDisplayOrientation));
-        mCallback.onCameraOpened();
     }
 
     private AspectRatio chooseAspectRatio() {
@@ -446,9 +481,13 @@ class Camera1 extends CameraViewImpl implements MediaRecorder.OnInfoListener,
         mCameraParameters.setRotation(calcCameraRotation(mDisplayOrientation));
         setAutoFocusInternal(mAutoFocus);
         setFlashInternal(mFlash);
+        setAspectRatio(mAspectRatio);
+        setZoomInternal(mZoom);
+        setWhiteBalanceInternal(mWhiteBalance);
+        setScanningInternal(mIsScanning);
         mCamera.setParameters(mCameraParameters);
         if (mShowingPreview) {
-            mCamera.startPreview();
+            startCameraPreview();
         }
     }
 
@@ -713,7 +752,7 @@ class Camera1 extends CameraViewImpl implements MediaRecorder.OnInfoListener,
     @Override
     public void onInfo(MediaRecorder mr, int what, int extra) {
         if ( what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED ||
-                what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
+              what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
             stopRecording();
         }
     }

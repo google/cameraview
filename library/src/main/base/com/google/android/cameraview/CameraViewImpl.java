@@ -68,12 +68,12 @@ abstract class CameraViewImpl {
 
     abstract void takePicture();
 
-    abstract void setDisplayOrientation(int displayOrientation);
-
     abstract boolean record(String path, int maxDuration, int maxFileSize,
                             boolean recordAudio, CamcorderProfile profile);
 
     abstract void stopRecording();
+
+    abstract void setDisplayOrientation(int displayOrientation);
 
     abstract void setFocusDepth(float value);
 

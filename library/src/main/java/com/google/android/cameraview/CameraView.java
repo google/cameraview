@@ -18,7 +18,6 @@ package com.google.android.cameraview;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.res.TypedArray;
 import android.media.CamcorderProfile;
 import android.os.Build;
 import android.os.Parcel;
@@ -106,20 +105,9 @@ public class CameraView extends FrameLayout {
         } else {
             mImpl = new Camera2Api23(mCallbacks, preview, context);
         }
-        // Attributes
-        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
-                R.style.Widget_CameraView);
-        mAdjustViewBounds = a.getBoolean(R.styleable.CameraView_android_adjustViewBounds, false);
-        setFacing(a.getInt(R.styleable.CameraView_facing, FACING_BACK));
-        String aspectRatio = a.getString(R.styleable.CameraView_aspectRatio);
-        if (aspectRatio != null) {
-            setAspectRatio(AspectRatio.parse(aspectRatio));
-        } else {
-            setAspectRatio(Constants.DEFAULT_ASPECT_RATIO);
-        }
-        setAutoFocus(a.getBoolean(R.styleable.CameraView_autoFocus, true));
-        setFlash(a.getInt(R.styleable.CameraView_flash, Constants.FLASH_AUTO));
-        a.recycle();
+
+        mAdjustViewBounds = true;
+
         // Display orientation detector
         mDisplayOrientationDetector = new DisplayOrientationDetector(context) {
             @Override
@@ -223,6 +211,10 @@ public class CameraView extends FrameLayout {
         state.ratio = getAspectRatio();
         state.autoFocus = getAutoFocus();
         state.flash = getFlash();
+        state.focusDepth = getFocusDepth();
+        state.zoom = getZoom();
+        state.whiteBalance = getWhiteBalance();
+        state.scanning = getScanning();
         return state;
     }
 
@@ -238,6 +230,10 @@ public class CameraView extends FrameLayout {
         setAspectRatio(ss.ratio);
         setAutoFocus(ss.autoFocus);
         setFlash(ss.flash);
+        setFocusDepth(ss.focusDepth);
+        setZoom(ss.zoom);
+        setWhiteBalance(ss.whiteBalance);
+        setScanning(ss.scanning);
     }
 
     /**
@@ -246,7 +242,10 @@ public class CameraView extends FrameLayout {
      */
     public void start() {
         if (!mImpl.start()) {
-            //store the state ,and restore this state after fall back o Camera1
+            if (mImpl.getView() != null) {
+                this.removeView(mImpl.getView());
+            }
+            //store the state and restore this state after fall back to Camera1
             Parcelable state=onSaveInstanceState();
             // Camera2 uses legacy hardware layer; fall back to Camera1
             mImpl = new Camera1(mCallbacks, createPreviewImpl(getContext()));
@@ -539,6 +538,14 @@ public class CameraView extends FrameLayout {
         @Flash
         int flash;
 
+        float focusDepth;
+
+        float zoom;
+
+        int whiteBalance;
+
+        boolean scanning;
+
         @SuppressWarnings("WrongConstant")
         public SavedState(Parcel source, ClassLoader loader) {
             super(source);
@@ -546,6 +553,10 @@ public class CameraView extends FrameLayout {
             ratio = source.readParcelable(loader);
             autoFocus = source.readByte() != 0;
             flash = source.readInt();
+            focusDepth = source.readFloat();
+            zoom = source.readFloat();
+            whiteBalance = source.readInt();
+            scanning = source.readByte() != 0;
         }
 
         public SavedState(Parcelable superState) {
@@ -559,9 +570,13 @@ public class CameraView extends FrameLayout {
             out.writeParcelable(ratio, 0);
             out.writeByte((byte) (autoFocus ? 1 : 0));
             out.writeInt(flash);
+            out.writeFloat(focusDepth);
+            out.writeFloat(zoom);
+            out.writeInt(whiteBalance);
+            out.writeByte((byte) (scanning ? 1 : 0));
         }
 
-        public static final Parcelable.Creator<SavedState> CREATOR
+        public static final Creator<SavedState> CREATOR
                 = ParcelableCompat.newCreator(new ParcelableCompatCreatorCallbacks<SavedState>() {
 
             @Override
