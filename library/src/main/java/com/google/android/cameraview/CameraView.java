@@ -309,6 +309,13 @@ public class CameraView extends FrameLayout {
         return mAdjustViewBounds;
     }
 
+    public View getView() {
+      if (mImpl != null) {
+        return mImpl.getView();
+      }
+      return null;
+    }
+
     /**
      * Chooses camera by the direction it faces.
      *
@@ -399,12 +406,55 @@ public class CameraView extends FrameLayout {
         return mImpl.getFlash();
     }
 
+    public void setFocusDepth(float value) {
+        mImpl.setFocusDepth(value);
+    }
+
+    public float getFocusDepth() { return mImpl.getFocusDepth(); }
+
+    public void setZoom(float zoom) {
+      mImpl.setZoom(zoom);
+    }
+
+    public float getZoom() {
+      return mImpl.getZoom();
+    }
+
+    public void setWhiteBalance(int whiteBalance) {
+      mImpl.setWhiteBalance(whiteBalance);
+    }
+
+    public int getWhiteBalance() {
+      return mImpl.getWhiteBalance();
+    }
+
+    public void setScanning(boolean isScanning) { mImpl.setScanning(isScanning);}
+
+    public boolean getScanning() { return mImpl.getScanning(); }
+
     /**
      * Take a picture. The result will be returned to
      * {@link Callback#onPictureTaken(CameraView, byte[])}.
      */
     public void takePicture() {
         mImpl.takePicture();
+    }
+
+    /**
+     * Record a video and save it to file. The result will be returned to
+     * {@link Callback#onVideoRecorded(CameraView, String)}.
+     * @param path Path to file that video will be saved to.
+     * @param maxDuration Maximum duration of the recording, in seconds.
+     * @param maxFileSize Maximum recording file size, in bytes.
+     * @param profile Quality profile of the recording.
+     */
+    public boolean record(String path, int maxDuration, int maxFileSize,
+                          boolean recordAudio, CamcorderProfile profile) {
+        return mImpl.record(path, maxDuration, maxFileSize, recordAudio, profile);
+    }
+
+    public void stopRecording() {
+        mImpl.stopRecording();
     }
 
     private class CallbackBridge implements CameraViewImpl.Callback {
