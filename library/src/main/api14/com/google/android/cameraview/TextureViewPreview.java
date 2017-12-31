@@ -24,6 +24,7 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 
 @TargetApi(14)
 class TextureViewPreview extends PreviewImpl {
@@ -54,6 +55,7 @@ class TextureViewPreview extends PreviewImpl {
             @Override
             public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
                 setSize(0, 0);
+                dispatchSurfaceDestroyed();
                 return true;
             }
 

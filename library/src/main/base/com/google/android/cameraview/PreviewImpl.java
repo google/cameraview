@@ -28,6 +28,8 @@ abstract class PreviewImpl {
 
     interface Callback {
         void onSurfaceChanged();
+
+        void onSurfaceDestroyed();
     }
 
     private Callback mCallback;
@@ -52,6 +54,10 @@ abstract class PreviewImpl {
 
     protected void dispatchSurfaceChanged() {
         mCallback.onSurfaceChanged();
+    }
+
+    protected void dispatchSurfaceDestroyed() {
+        mCallback.onSurfaceDestroyed();
     }
 
     SurfaceHolder getSurfaceHolder() {
