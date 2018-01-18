@@ -57,7 +57,6 @@ import java.util.Set;
  * $ adb pull /sdcard/Android/data/com.google.android.cameraview.demo/files/Pictures/picture.jpg
  */
 public class MainActivity extends AppCompatActivity implements
-        ActivityCompat.OnRequestPermissionsResultCallback,
         AspectRatioFragment.Listener {
 
     private static final String TAG = "MainActivity";

@@ -15,14 +15,12 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion rootProject.ext.compileSdkVersion
-
-    buildToolsVersion rootProject.ext.buildToolsVersion
+    compileSdkVersion 23
 
     defaultConfig {
         applicationId 'com.google.android.cameraview.demo'
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
+        minSdkVersion 14
+        targetSdkVersion 23
         versionCode 1
         versionName '1.0'
         testInstrumentationRunner 'android.support.test.runner.AndroidJUnitRunner'
@@ -38,7 +36,7 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile "com.android.support:design:$supportLibraryVersion"
+    compile "com.android.support:design:23.4.0"
     compile project(':library')
 
     // Tests
