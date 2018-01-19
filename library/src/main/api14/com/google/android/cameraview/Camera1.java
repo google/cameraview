@@ -288,7 +288,14 @@ class Camera1 extends CameraViewImpl {
         if (mCamera != null) {
             releaseCamera();
         }
-        mCamera = Camera.open(mCameraId);
+        try {
+            mCamera = Camera.open(mCameraId);
+        } catch (Exception e) {
+            mCamera.stopPreview();
+            mCamera.release();
+            mCamera = null;
+            mCamera = Camera.open(mCameraId);
+        }
         mCameraParameters = mCamera.getParameters();
         // Supported preview sizes
         mPreviewSizes.clear();
