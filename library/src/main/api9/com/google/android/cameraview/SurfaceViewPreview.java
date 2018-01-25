@@ -17,7 +17,7 @@
 package com.google.android.cameraview;
 
 import android.content.Context;
-import android.support.v4.view.ViewCompat;
+import android.os.Build;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -42,8 +42,10 @@ class SurfaceViewPreview extends PreviewImpl {
             @Override
             public void surfaceChanged(SurfaceHolder h, int format, int width, int height) {
                 setSize(width, height);
-                if (!ViewCompat.isInLayout(mSurfaceView)) {
-                    dispatchSurfaceChanged();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                    if (!mSurfaceView.isInLayout()) {
+                        dispatchSurfaceChanged();
+                    }
                 }
             }
 

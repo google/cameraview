@@ -57,7 +57,6 @@ import java.util.Set;
  * $ adb pull /sdcard/Android/data/com.google.android.cameraview.demo/files/Pictures/picture.jpg
  */
 public class MainActivity extends AppCompatActivity implements
-        ActivityCompat.OnRequestPermissionsResultCallback,
         AspectRatioFragment.Listener {
 
     private static final String TAG = "MainActivity";
@@ -106,6 +105,7 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.e("ly", "onCreate");
         setContentView(R.layout.activity_main);
         mCameraView = (CameraView) findViewById(R.id.camera);
         if (mCameraView != null) {
@@ -126,6 +126,7 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onResume() {
         super.onResume();
+        Log.e("ly", "onResume");
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED) {
             mCameraView.start();
@@ -147,11 +148,13 @@ public class MainActivity extends AppCompatActivity implements
     protected void onPause() {
         mCameraView.stop();
         super.onPause();
+        Log.e("ly", "onPause");
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        Log.e("ly", "onDestroy");
         if (mBackgroundHandler != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
                 mBackgroundHandler.getLooper().quitSafely();
@@ -206,7 +209,7 @@ public class MainActivity extends AppCompatActivity implements
                     mCameraView.setFlash(FLASH_OPTIONS[mCurrentFlash]);
                 }
                 return true;
-            case R.id.switch_camera:
+            case R.id.switch_camera://切换前后摄像头
                 if (mCameraView != null) {
                     int facing = mCameraView.getFacing();
                     mCameraView.setFacing(facing == CameraView.FACING_FRONT ?
