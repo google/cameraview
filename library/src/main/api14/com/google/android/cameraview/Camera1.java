@@ -291,14 +291,13 @@ class Camera1 extends CameraViewImpl {
         }
         mDisplayOrientation = displayOrientation;
         if (isCameraOpened()) {
-            int cameraRotation = calcCameraRotation(displayOrientation);
-            mCameraParameters.setRotation(cameraRotation);
+            mCameraParameters.setRotation(calcCameraRotation(displayOrientation));
             mCamera.setParameters(mCameraParameters);
             final boolean needsToStopPreview = mShowingPreview && Build.VERSION.SDK_INT < 14;
             if (needsToStopPreview) {
                 mCamera.stopPreview();
             }
-            mCamera.setDisplayOrientation(cameraRotation);
+            mCamera.setDisplayOrientation(calcDisplayOrientation(displayOrientation));
             if (needsToStopPreview) {
                 mCamera.startPreview();
             }
@@ -340,7 +339,7 @@ class Camera1 extends CameraViewImpl {
             mAspectRatio = Constants.DEFAULT_ASPECT_RATIO;
         }
         adjustCameraParameters();
-        mCamera.setDisplayOrientation(calcCameraRotation(mDisplayOrientation));
+        mCamera.setDisplayOrientation(calcDisplayOrientation(mDisplayOrientation));
         mCallback.onCameraOpened();
     }
 
@@ -362,23 +361,22 @@ class Camera1 extends CameraViewImpl {
             sizes = mPreviewSizes.sizes(mAspectRatio);
         }
         Size size = chooseOptimalSize(sizes);
-        final Camera.Size currentSize = mCameraParameters.getPictureSize();
-        if (currentSize.width != size.getWidth() || currentSize.height != size.getHeight()) {
-            // Largest picture size in this ratio
-            final Size pictureSize = mPictureSizes.sizes(mAspectRatio).last();
-            if (mShowingPreview) {
-                mCamera.stopPreview();
-            }
-            mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
-            mCameraParameters.setPictureSize(pictureSize.getWidth(), pictureSize.getHeight());
-            mCameraParameters.setRotation(calcCameraRotation(mDisplayOrientation));
-            setAutoFocusInternal(mAutoFocus);
-            setFlashInternal(mFlash);
+
+        // Always re-apply camera parameters
+        // Largest picture size in this ratio
+        final Size pictureSize = mPictureSizes.sizes(mAspectRatio).last();
+        if (mShowingPreview) {
+            mCamera.stopPreview();
+        }
+        mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
+        mCameraParameters.setPictureSize(pictureSize.getWidth(), pictureSize.getHeight());
+        mCameraParameters.setRotation(calcCameraRotation(mDisplayOrientation));
+        setAutoFocusInternal(mAutoFocus);
+        setFlashInternal(mFlash);
             setZoomInternal(mZoom);
-            mCamera.setParameters(mCameraParameters);
-            if (mShowingPreview) {
-                mCamera.startPreview();
-            }
+        mCamera.setParameters(mCameraParameters);
+        if (mShowingPreview) {
+            mCamera.startPreview();
         }
     }
 
@@ -391,7 +389,7 @@ class Camera1 extends CameraViewImpl {
         int desiredHeight;
         final int surfaceWidth = mPreview.getWidth();
         final int surfaceHeight = mPreview.getHeight();
-        if (mDisplayOrientation == 90 || mDisplayOrientation == 270) {
+        if (isLandscape(mDisplayOrientation)) {
             desiredWidth = surfaceHeight;
             desiredHeight = surfaceWidth;
         } else {
@@ -417,12 +415,54 @@ class Camera1 extends CameraViewImpl {
         }
     }
 
-    private int calcCameraRotation(int rotation) {
+    /**
+     * Calculate display orientation
+     * https://developer.android.com/reference/android/hardware/Camera.html#setDisplayOrientation(int)
+     *
+     * This calculation is used for orienting the preview
+     *
+     * Note: This is not the same calculation as the camera rotation
+     *
+     * @param screenOrientationDegrees Screen orientation in degrees
+     * @return Number of degrees required to rotate preview
+     */
+    private int calcDisplayOrientation(int screenOrientationDegrees) {
         if (mCameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
-            return (360 - (mCameraInfo.orientation + rotation) % 360) % 360;
+            return (360 - (mCameraInfo.orientation + screenOrientationDegrees) % 360) % 360;
         } else {  // back-facing
-            return (mCameraInfo.orientation - rotation + 360) % 360;
+            return (mCameraInfo.orientation - screenOrientationDegrees + 360) % 360;
         }
+    }
+
+    /**
+     * Calculate camera rotation
+     *
+     * This calculation is applied to the output JPEG either via Exif Orientation tag
+     * or by actually transforming the bitmap. (Determined by vendor camera API implementation)
+     *
+     * Note: This is not the same calculation as the display orientation
+     *
+     * @param screenOrientationDegrees Screen orientation in degrees
+     * @return Number of degrees to rotate image in order for it to view correctly.
+     */
+    private int calcCameraRotation(int screenOrientationDegrees) {
+        if (mCameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            return (mCameraInfo.orientation + screenOrientationDegrees) % 360;
+        } else {  // back-facing
+            final int landscapeFlip = isLandscape(screenOrientationDegrees) ? 180 : 0;
+            return (mCameraInfo.orientation + screenOrientationDegrees + landscapeFlip) % 360;
+        }
+    }
+
+    /**
+     * Test if the supplied orientation is in landscape.
+     *
+     * @param orientationDegrees Orientation in degrees (0,90,180,270)
+     * @return True if in landscape, false if portrait
+     */
+    private boolean isLandscape(int orientationDegrees) {
+        return (orientationDegrees == Constants.LANDSCAPE_90 ||
+                orientationDegrees == Constants.LANDSCAPE_270);
     }
 
     /**
