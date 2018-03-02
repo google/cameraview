@@ -19,10 +19,13 @@ package com.google.android.cameraview;
 import android.annotation.SuppressLint;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
+import android.media.CamcorderProfile;
+import android.media.MediaRecorder;
 import android.os.Build;
 import android.support.v4.util.SparseArrayCompat;
 import android.view.SurfaceHolder;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
@@ -31,7 +34,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 
 @SuppressWarnings("deprecation")
-class Camera1 extends CameraViewImpl {
+class Camera1 extends CameraViewImpl implements MediaRecorder.OnInfoListener,
+                                                MediaRecorder.OnErrorListener, Camera.PreviewCallback {
 
     private static final int INVALID_CAMERA_ID = -1;
 
@@ -45,6 +49,17 @@ class Camera1 extends CameraViewImpl {
         FLASH_MODES.put(Constants.FLASH_RED_EYE, Camera.Parameters.FLASH_MODE_RED_EYE);
     }
 
+    private static final SparseArrayCompat<String> WB_MODES = new SparseArrayCompat<>();
+
+    static {
+      WB_MODES.put(Constants.WB_AUTO, Camera.Parameters.WHITE_BALANCE_AUTO);
+      WB_MODES.put(Constants.WB_CLOUDY, Camera.Parameters.WHITE_BALANCE_CLOUDY_DAYLIGHT);
+      WB_MODES.put(Constants.WB_SUNNY, Camera.Parameters.WHITE_BALANCE_DAYLIGHT);
+      WB_MODES.put(Constants.WB_SHADOW, Camera.Parameters.WHITE_BALANCE_SHADE);
+      WB_MODES.put(Constants.WB_FLUORESCENT, Camera.Parameters.WHITE_BALANCE_FLUORESCENT);
+      WB_MODES.put(Constants.WB_INCANDESCENT, Camera.Parameters.WHITE_BALANCE_INCANDESCENT);
+    }
+
     private int mCameraId;
 
     private final AtomicBoolean isPictureCaptureInProgress = new AtomicBoolean(false);
@@ -54,6 +69,12 @@ class Camera1 extends CameraViewImpl {
     private Camera.Parameters mCameraParameters;
 
     private final Camera.CameraInfo mCameraInfo = new Camera.CameraInfo();
+
+    private MediaRecorder mMediaRecorder;
+
+    private String mVideoPath;
+
+    private boolean mIsRecording;
 
     private final SizeMap mPreviewSizes = new SizeMap();
 
@@ -71,6 +92,14 @@ class Camera1 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
+    private float mZoom;
+
+    private int mWhiteBalance;
+
+    private boolean mIsScanning;
+
+    private SurfaceTexture mPreviewTexture;
+
     Camera1(Callback callback, PreviewImpl preview) {
         super(callback, preview);
         preview.setCallback(new PreviewImpl.Callback() {
@@ -81,18 +110,27 @@ class Camera1 extends CameraViewImpl {
                     adjustCameraParameters();
                 }
             }
+
+            @Override
+            public void onSurfaceDestroyed() {
+              stop();
+            }
         });
     }
 
     @Override
     boolean start() {
         chooseCamera();
-        openCamera();
+        if (!openCamera()) {
+            mCallback.onMountError();
+            // returning false will result in invoking this method again
+            return true;
+        }
         if (mPreview.isReady()) {
             setUpPreview();
         }
         mShowingPreview = true;
-        mCamera.startPreview();
+        startCameraPreview();
         return true;
     }
 
@@ -100,8 +138,19 @@ class Camera1 extends CameraViewImpl {
     void stop() {
         if (mCamera != null) {
             mCamera.stopPreview();
+            mCamera.setPreviewCallback(null);
         }
         mShowingPreview = false;
+        if (mMediaRecorder != null) {
+            mMediaRecorder.stop();
+            mMediaRecorder.release();
+            mMediaRecorder = null;
+
+            if (mIsRecording) {
+                mCallback.onVideoRecorded(mVideoPath);
+                mIsRecording = false;
+            }
+        }
         releaseCamera();
     }
 
@@ -109,20 +158,29 @@ class Camera1 extends CameraViewImpl {
     @SuppressLint("NewApi")
     void setUpPreview() {
         try {
-            if (mPreview.getOutputClass() == SurfaceHolder.class) {
+            if (mPreviewTexture != null) {
+                mCamera.setPreviewTexture(mPreviewTexture);
+            } else if (mPreview.getOutputClass() == SurfaceHolder.class) {
                 final boolean needsToStopPreview = mShowingPreview && Build.VERSION.SDK_INT < 14;
                 if (needsToStopPreview) {
                     mCamera.stopPreview();
                 }
                 mCamera.setPreviewDisplay(mPreview.getSurfaceHolder());
                 if (needsToStopPreview) {
-                    mCamera.startPreview();
+                    startCameraPreview();
                 }
             } else {
                 mCamera.setPreviewTexture((SurfaceTexture) mPreview.getSurfaceTexture());
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void startCameraPreview() {
+        mCamera.startPreview();
+        if (mIsScanning) {
+            mCamera.setPreviewCallback(this);
         }
     }
 
@@ -218,6 +276,59 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
+    public void setFocusDepth(float value) {
+        // not supported for Camera1
+    }
+
+    @Override
+    float getFocusDepth() {
+        return 0;
+    }
+
+    @Override
+    void setZoom(float zoom) {
+        if (zoom == mZoom) {
+            return;
+        }
+        if (setZoomInternal(zoom)) {
+            mCamera.setParameters(mCameraParameters);
+        }
+    }
+
+    @Override
+    float getZoom() {
+        return mZoom;
+    }
+
+    @Override
+    public void setWhiteBalance(int whiteBalance) {
+        if (whiteBalance == mWhiteBalance) {
+            return;
+        }
+        if (setWhiteBalanceInternal(whiteBalance)) {
+            mCamera.setParameters(mCameraParameters);
+        }
+    }
+
+    @Override
+    public int getWhiteBalance() {
+        return mWhiteBalance;
+    }
+
+    @Override
+    void setScanning(boolean isScanning) {
+        if (isScanning == mIsScanning) {
+            return;
+        }
+        setScanningInternal(isScanning);
+    }
+
+    @Override
+    boolean getScanning() {
+        return mIsScanning;
+    }
+
+    @Override
     void takePicture() {
         if (!isCameraOpened()) {
             throw new IllegalStateException(
@@ -242,11 +353,41 @@ class Camera1 extends CameraViewImpl {
                 @Override
                 public void onPictureTaken(byte[] data, Camera camera) {
                     isPictureCaptureInProgress.set(false);
-                    mCallback.onPictureTaken(data);
                     camera.cancelAutoFocus();
                     camera.startPreview();
+                    if (mIsScanning) {
+                        camera.setPreviewCallback(Camera1.this);
+                    }
+                    mCallback.onPictureTaken(data);
                 }
             });
+        }
+    }
+
+    @Override
+    boolean record(String path, int maxDuration, int maxFileSize, boolean recordAudio, CamcorderProfile profile) {
+        if (!mIsRecording) {
+            setUpMediaRecorder(path, maxDuration, maxFileSize, recordAudio, profile);
+            try {
+                mMediaRecorder.prepare();
+                mMediaRecorder.start();
+                mIsRecording = true;
+                return true;
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    void stopRecording() {
+        if (mIsRecording) {
+            stopMediaRecorder();
+            if (mCamera != null) {
+                mCamera.lock();
+            }
         }
     }
 
@@ -265,9 +406,38 @@ class Camera1 extends CameraViewImpl {
             }
             mCamera.setDisplayOrientation(calcDisplayOrientation(displayOrientation));
             if (needsToStopPreview) {
-                mCamera.startPreview();
+                startCameraPreview();
             }
         }
+    }
+
+    @Override
+    public void setPreviewTexture(SurfaceTexture surfaceTexture) {
+        try {
+            if (mCamera == null) {
+                mPreviewTexture = surfaceTexture;
+                return;
+            }
+
+            mCamera.stopPreview();
+
+            if (surfaceTexture == null) {
+                mCamera.setPreviewTexture((SurfaceTexture) mPreview.getSurfaceTexture());
+            } else {
+                mCamera.setPreviewTexture(surfaceTexture);
+            }
+
+            mPreviewTexture = surfaceTexture;
+            startCameraPreview();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public Size getPreviewSize() {
+        Camera.Size cameraSize = mCameraParameters.getPreviewSize();
+        return new Size(cameraSize.width, cameraSize.height);
     }
 
     /**
@@ -284,29 +454,34 @@ class Camera1 extends CameraViewImpl {
         mCameraId = INVALID_CAMERA_ID;
     }
 
-    private void openCamera() {
+    private boolean openCamera() {
         if (mCamera != null) {
             releaseCamera();
         }
-        mCamera = Camera.open(mCameraId);
-        mCameraParameters = mCamera.getParameters();
-        // Supported preview sizes
-        mPreviewSizes.clear();
-        for (Camera.Size size : mCameraParameters.getSupportedPreviewSizes()) {
-            mPreviewSizes.add(new Size(size.width, size.height));
+        try {
+            mCamera = Camera.open(mCameraId);
+            mCameraParameters = mCamera.getParameters();
+            // Supported preview sizes
+            mPreviewSizes.clear();
+            for (Camera.Size size : mCameraParameters.getSupportedPreviewSizes()) {
+                mPreviewSizes.add(new Size(size.width, size.height));
+            }
+            // Supported picture sizes;
+            mPictureSizes.clear();
+            for (Camera.Size size : mCameraParameters.getSupportedPictureSizes()) {
+                mPictureSizes.add(new Size(size.width, size.height));
+            }
+            // AspectRatio
+            if (mAspectRatio == null) {
+                mAspectRatio = Constants.DEFAULT_ASPECT_RATIO;
+            }
+            adjustCameraParameters();
+            mCamera.setDisplayOrientation(calcDisplayOrientation(mDisplayOrientation));
+            mCallback.onCameraOpened();
+            return true;
+        } catch (RuntimeException e) {
+            return false;
         }
-        // Supported picture sizes;
-        mPictureSizes.clear();
-        for (Camera.Size size : mCameraParameters.getSupportedPictureSizes()) {
-            mPictureSizes.add(new Size(size.width, size.height));
-        }
-        // AspectRatio
-        if (mAspectRatio == null) {
-            mAspectRatio = Constants.DEFAULT_ASPECT_RATIO;
-        }
-        adjustCameraParameters();
-        mCamera.setDisplayOrientation(calcDisplayOrientation(mDisplayOrientation));
-        mCallback.onCameraOpened();
     }
 
     private AspectRatio chooseAspectRatio() {
@@ -339,9 +514,13 @@ class Camera1 extends CameraViewImpl {
         mCameraParameters.setRotation(calcCameraRotation(mDisplayOrientation));
         setAutoFocusInternal(mAutoFocus);
         setFlashInternal(mFlash);
+        setAspectRatio(mAspectRatio);
+        setZoomInternal(mZoom);
+        setWhiteBalanceInternal(mWhiteBalance);
+        setScanningInternal(mIsScanning);
         mCamera.setParameters(mCameraParameters);
         if (mShowingPreview) {
-            mCamera.startPreview();
+            startCameraPreview();
         }
     }
 
@@ -477,4 +656,143 @@ class Camera1 extends CameraViewImpl {
         }
     }
 
+    /**
+     * @return {@code true} if {@link #mCameraParameters} was modified.
+     */
+    private boolean setZoomInternal(float zoom) {
+        if (isCameraOpened() && mCameraParameters.isZoomSupported()) {
+            int maxZoom = mCameraParameters.getMaxZoom();
+            int scaledValue = (int) (zoom * maxZoom);
+            mCameraParameters.setZoom(scaledValue);
+            mZoom = zoom;
+            return true;
+        } else {
+            mZoom = zoom;
+            return false;
+        }
+    }
+
+    /**
+     * @return {@code true} if {@link #mCameraParameters} was modified.
+     */
+    private boolean setWhiteBalanceInternal(int whiteBalance) {
+        mWhiteBalance = whiteBalance;
+        if (isCameraOpened()) {
+            final List<String> modes = mCameraParameters.getSupportedWhiteBalance();
+            String mode = WB_MODES.get(whiteBalance);
+            if (modes != null && modes.contains(mode)) {
+                mCameraParameters.setWhiteBalance(mode);
+                return true;
+            }
+            String currentMode = WB_MODES.get(mWhiteBalance);
+            if (modes == null || !modes.contains(currentMode)) {
+                mCameraParameters.setWhiteBalance(Camera.Parameters.WHITE_BALANCE_AUTO);
+                mWhiteBalance = Constants.WB_AUTO;
+                return true;
+            }
+            return false;
+        } else {
+            return false;
+        }
+    }
+
+    private void setScanningInternal(boolean isScanning) {
+        mIsScanning = isScanning;
+        if (isCameraOpened()) {
+            if (mIsScanning) {
+                mCamera.setPreviewCallback(this);
+            } else {
+                mCamera.setPreviewCallback(null);
+            }
+        }
+    }
+
+    @Override
+    public void onPreviewFrame(byte[] data, Camera camera) {
+        Camera.Size previewSize = mCameraParameters.getPreviewSize();
+        mCallback.onFramePreview(data, previewSize.width, previewSize.height, mDisplayOrientation);
+    }
+
+    private void setUpMediaRecorder(String path, int maxDuration, int maxFileSize, boolean recordAudio, CamcorderProfile profile) {
+        mMediaRecorder = new MediaRecorder();
+        mCamera.unlock();
+
+        mMediaRecorder.setCamera(mCamera);
+
+        mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+        if (recordAudio) {
+            mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
+        }
+
+        mMediaRecorder.setOutputFile(path);
+        mVideoPath = path;
+
+        if (CamcorderProfile.hasProfile(mCameraId, profile.quality)) {
+            setCamcorderProfile(CamcorderProfile.get(mCameraId, profile.quality), recordAudio);
+        } else {
+            setCamcorderProfile(CamcorderProfile.get(mCameraId, CamcorderProfile.QUALITY_HIGH), recordAudio);
+        }
+
+        mMediaRecorder.setOrientationHint(calcDisplayOrientation(mDisplayOrientation));
+
+        if (maxDuration != -1) {
+            mMediaRecorder.setMaxDuration(maxDuration);
+        }
+        if (maxFileSize != -1) {
+            mMediaRecorder.setMaxFileSize(maxFileSize);
+        }
+
+        mMediaRecorder.setOnInfoListener(this);
+        mMediaRecorder.setOnErrorListener(this);
+    }
+
+    private void stopMediaRecorder() {
+        mIsRecording = false;
+        if (mMediaRecorder != null) {
+            try {
+                mMediaRecorder.stop();
+            } catch (RuntimeException ex) {
+                ex.printStackTrace();
+            }
+            mMediaRecorder.reset();
+            mMediaRecorder.release();
+            mMediaRecorder = null;
+        }
+
+        if (mVideoPath == null || !new File(mVideoPath).exists()) {
+            mCallback.onVideoRecorded(null);
+            return;
+        }
+
+        mCallback.onVideoRecorded(mVideoPath);
+        mVideoPath = null;
+    }
+
+    private void setCamcorderProfile(CamcorderProfile profile, boolean recordAudio) {
+        mMediaRecorder.setOutputFormat(profile.fileFormat);
+        mMediaRecorder.setVideoFrameRate(profile.videoFrameRate);
+        mMediaRecorder.setVideoSize(profile.videoFrameWidth, profile.videoFrameHeight);
+        mMediaRecorder.setVideoEncodingBitRate(profile.videoBitRate);
+        mMediaRecorder.setVideoEncoder(profile.videoCodec);
+        if (recordAudio) {
+            mMediaRecorder.setAudioEncodingBitRate(profile.audioBitRate);
+            mMediaRecorder.setAudioChannels(profile.audioChannels);
+            mMediaRecorder.setAudioSamplingRate(profile.audioSampleRate);
+            mMediaRecorder.setAudioEncoder(profile.audioCodec);
+        }
+    }
+
+    @Override
+    public void onInfo(MediaRecorder mr, int what, int extra) {
+        if ( what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED ||
+              what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
+            stopRecording();
+        }
+    }
+
+
+    @Override
+    public void onError(MediaRecorder mr, int what, int extra) {
+        stopRecording();
+    }
 }

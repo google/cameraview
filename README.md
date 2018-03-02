@@ -1,5 +1,8 @@
 # CameraView
 
+** Fork to be consumed by [react-native-camera](https://github.com/react-native-community/react-native-camera) **
+This is based on awesome work of Expo developers from here: https://github.com/expo/expo/tree/master/android/cameraview
+
 *This is a preview release. The API is subject to change.*
 
 This is not an official Google product.
