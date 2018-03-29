@@ -18,7 +18,7 @@ package com.google.android.cameraview;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.res.TypedArray;
+import android.media.CamcorderProfile;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -29,7 +29,9 @@ import android.support.v4.os.ParcelableCompat;
 import android.support.v4.os.ParcelableCompatCreatorCallbacks;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
+import android.view.View;
 import android.widget.FrameLayout;
+import android.graphics.SurfaceTexture;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -76,48 +78,40 @@ public class CameraView extends FrameLayout {
 
     private boolean mAdjustViewBounds;
 
+    private Context mContext;
+
     private final DisplayOrientationDetector mDisplayOrientationDetector;
 
-    public CameraView(Context context) {
-        this(context, null);
+    public CameraView(Context context, boolean fallbackToOldApi) {
+        this(context, null, fallbackToOldApi);
     }
 
-    public CameraView(Context context, AttributeSet attrs) {
-        this(context, attrs, 0);
+    public CameraView(Context context, AttributeSet attrs, boolean fallbackToOldApi) {
+        this(context, attrs, 0, fallbackToOldApi);
     }
 
     @SuppressWarnings("WrongConstant")
-    public CameraView(Context context, AttributeSet attrs, int defStyleAttr) {
+    public CameraView(Context context, AttributeSet attrs, int defStyleAttr, boolean fallbackToOldApi) {
         super(context, attrs, defStyleAttr);
         if (isInEditMode()){
             mCallbacks = null;
             mDisplayOrientationDetector = null;
             return;
         }
+        mAdjustViewBounds = true;
+        mContext = context;
+
         // Internal setup
         final PreviewImpl preview = createPreviewImpl(context);
         mCallbacks = new CallbackBridge();
-        if (Build.VERSION.SDK_INT < 21) {
+        if (fallbackToOldApi || Build.VERSION.SDK_INT < 21) {
             mImpl = new Camera1(mCallbacks, preview);
         } else if (Build.VERSION.SDK_INT < 23) {
             mImpl = new Camera2(mCallbacks, preview, context);
         } else {
             mImpl = new Camera2Api23(mCallbacks, preview, context);
         }
-        // Attributes
-        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
-                R.style.Widget_CameraView);
-        mAdjustViewBounds = a.getBoolean(R.styleable.CameraView_android_adjustViewBounds, false);
-        setFacing(a.getInt(R.styleable.CameraView_facing, FACING_BACK));
-        String aspectRatio = a.getString(R.styleable.CameraView_aspectRatio);
-        if (aspectRatio != null) {
-            setAspectRatio(AspectRatio.parse(aspectRatio));
-        } else {
-            setAspectRatio(Constants.DEFAULT_ASPECT_RATIO);
-        }
-        setAutoFocus(a.getBoolean(R.styleable.CameraView_autoFocus, true));
-        setFlash(a.getInt(R.styleable.CameraView_flash, Constants.FLASH_AUTO));
-        a.recycle();
+
         // Display orientation detector
         mDisplayOrientationDetector = new DisplayOrientationDetector(context) {
             @Override
@@ -221,6 +215,10 @@ public class CameraView extends FrameLayout {
         state.ratio = getAspectRatio();
         state.autoFocus = getAutoFocus();
         state.flash = getFlash();
+        state.focusDepth = getFocusDepth();
+        state.zoom = getZoom();
+        state.whiteBalance = getWhiteBalance();
+        state.scanning = getScanning();
         return state;
     }
 
@@ -236,6 +234,43 @@ public class CameraView extends FrameLayout {
         setAspectRatio(ss.ratio);
         setAutoFocus(ss.autoFocus);
         setFlash(ss.flash);
+        setFocusDepth(ss.focusDepth);
+        setZoom(ss.zoom);
+        setWhiteBalance(ss.whiteBalance);
+        setScanning(ss.scanning);
+    }
+
+    public void setUsingCamera2Api(boolean useCamera2) {
+        if (Build.VERSION.SDK_INT < 21) {
+            return;
+        }
+
+        boolean wasOpened = isCameraOpened();
+        Parcelable state = onSaveInstanceState();
+
+        if (useCamera2) {
+            if (wasOpened) {
+                stop();
+            }
+            if (Build.VERSION.SDK_INT < 23) {
+                mImpl = new Camera2(mCallbacks, mImpl.mPreview, mContext);
+            } else {
+                mImpl = new Camera2Api23(mCallbacks, mImpl.mPreview, mContext);
+            }
+        } else {
+            if (mImpl instanceof Camera1) {
+                return;
+            }
+
+            if (wasOpened) {
+                stop();
+            }
+            mImpl = new Camera1(mCallbacks, mImpl.mPreview);
+        }
+        onRestoreInstanceState(state);
+        if (wasOpened) {
+            start();
+        }
     }
 
     /**
@@ -244,7 +279,10 @@ public class CameraView extends FrameLayout {
      */
     public void start() {
         if (!mImpl.start()) {
-            //store the state ,and restore this state after fall back o Camera1
+            if (mImpl.getView() != null) {
+                this.removeView(mImpl.getView());
+            }
+            //store the state and restore this state after fall back to Camera1
             Parcelable state=onSaveInstanceState();
             // Camera2 uses legacy hardware layer; fall back to Camera1
             mImpl = new Camera1(mCallbacks, createPreviewImpl(getContext()));
@@ -307,6 +345,13 @@ public class CameraView extends FrameLayout {
      */
     public boolean getAdjustViewBounds() {
         return mAdjustViewBounds;
+    }
+
+    public View getView() {
+      if (mImpl != null) {
+        return mImpl.getView();
+      }
+      return null;
     }
 
     /**
@@ -399,12 +444,63 @@ public class CameraView extends FrameLayout {
         return mImpl.getFlash();
     }
 
+    public void setFocusDepth(float value) {
+        mImpl.setFocusDepth(value);
+    }
+
+    public float getFocusDepth() { return mImpl.getFocusDepth(); }
+
+    public void setZoom(float zoom) {
+      mImpl.setZoom(zoom);
+    }
+
+    public float getZoom() {
+      return mImpl.getZoom();
+    }
+
+    public void setWhiteBalance(int whiteBalance) {
+      mImpl.setWhiteBalance(whiteBalance);
+    }
+
+    public int getWhiteBalance() {
+      return mImpl.getWhiteBalance();
+    }
+
+    public void setScanning(boolean isScanning) { mImpl.setScanning(isScanning);}
+
+    public boolean getScanning() { return mImpl.getScanning(); }
+
     /**
      * Take a picture. The result will be returned to
      * {@link Callback#onPictureTaken(CameraView, byte[])}.
      */
     public void takePicture() {
         mImpl.takePicture();
+    }
+
+    /**
+     * Record a video and save it to file. The result will be returned to
+     * {@link Callback#onVideoRecorded(CameraView, String)}.
+     * @param path Path to file that video will be saved to.
+     * @param maxDuration Maximum duration of the recording, in seconds.
+     * @param maxFileSize Maximum recording file size, in bytes.
+     * @param profile Quality profile of the recording.
+     */
+    public boolean record(String path, int maxDuration, int maxFileSize,
+                          boolean recordAudio, CamcorderProfile profile) {
+        return mImpl.record(path, maxDuration, maxFileSize, recordAudio, profile);
+    }
+
+    public void stopRecording() {
+        mImpl.stopRecording();
+    }
+
+    public void setPreviewTexture(SurfaceTexture surfaceTexture) {
+        mImpl.setPreviewTexture(surfaceTexture);
+    }
+
+    public Size getPreviewSize() {
+        return mImpl.getPreviewSize();
     }
 
     private class CallbackBridge implements CameraViewImpl.Callback {
@@ -449,6 +545,27 @@ public class CameraView extends FrameLayout {
             }
         }
 
+        @Override
+        public void onVideoRecorded(String path) {
+            for (Callback callback : mCallbacks) {
+                callback.onVideoRecorded(CameraView.this, path);
+            }
+        }
+
+        @Override
+        public void onFramePreview(byte[] data, int width, int height, int orientation) {
+            for (Callback callback : mCallbacks) {
+                callback.onFramePreview(CameraView.this, data, width, height, orientation);
+            }
+        }
+
+        @Override
+        public void onMountError() {
+            for (Callback callback : mCallbacks) {
+                callback.onMountError(CameraView.this);
+            }
+        }
+
         public void reserveRequestLayoutOnOpen() {
             mRequestLayoutOnOpen = true;
         }
@@ -466,6 +583,14 @@ public class CameraView extends FrameLayout {
         @Flash
         int flash;
 
+        float focusDepth;
+
+        float zoom;
+
+        int whiteBalance;
+
+        boolean scanning;
+
         @SuppressWarnings("WrongConstant")
         public SavedState(Parcel source, ClassLoader loader) {
             super(source);
@@ -473,6 +598,10 @@ public class CameraView extends FrameLayout {
             ratio = source.readParcelable(loader);
             autoFocus = source.readByte() != 0;
             flash = source.readInt();
+            focusDepth = source.readFloat();
+            zoom = source.readFloat();
+            whiteBalance = source.readInt();
+            scanning = source.readByte() != 0;
         }
 
         public SavedState(Parcelable superState) {
@@ -486,9 +615,13 @@ public class CameraView extends FrameLayout {
             out.writeParcelable(ratio, 0);
             out.writeByte((byte) (autoFocus ? 1 : 0));
             out.writeInt(flash);
+            out.writeFloat(focusDepth);
+            out.writeFloat(zoom);
+            out.writeInt(whiteBalance);
+            out.writeByte((byte) (scanning ? 1 : 0));
         }
 
-        public static final Parcelable.Creator<SavedState> CREATOR
+        public static final Creator<SavedState> CREATOR
                 = ParcelableCompat.newCreator(new ParcelableCompatCreatorCallbacks<SavedState>() {
 
             @Override
@@ -535,6 +668,20 @@ public class CameraView extends FrameLayout {
          */
         public void onPictureTaken(CameraView cameraView, byte[] data) {
         }
+
+        /**
+         * Called when a video is recorded.
+         *
+         * @param cameraView The associated {@link CameraView}.
+         * @param path       Path to recoredd video file.
+         */
+        public void onVideoRecorded(CameraView cameraView, String path) {
+        }
+
+        public void onFramePreview(CameraView cameraView, byte[] data, int width, int height, int orientation) {
+        }
+
+        public void onMountError(CameraView cameraView) {}
     }
 
 }

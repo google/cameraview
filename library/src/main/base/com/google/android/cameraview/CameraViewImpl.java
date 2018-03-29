@@ -16,7 +16,9 @@
 
 package com.google.android.cameraview;
 
+import android.media.CamcorderProfile;
 import android.view.View;
+import android.graphics.SurfaceTexture;
 
 import java.util.Set;
 
@@ -67,7 +69,32 @@ abstract class CameraViewImpl {
 
     abstract void takePicture();
 
+    abstract boolean record(String path, int maxDuration, int maxFileSize,
+                            boolean recordAudio, CamcorderProfile profile);
+
+    abstract void stopRecording();
+
     abstract void setDisplayOrientation(int displayOrientation);
+
+    abstract void setFocusDepth(float value);
+
+    abstract float getFocusDepth();
+
+    abstract void setZoom(float zoom);
+
+    abstract float getZoom();
+
+    abstract void setWhiteBalance(int whiteBalance);
+
+    abstract int getWhiteBalance();
+
+    abstract void setScanning(boolean isScanning);
+
+    abstract boolean getScanning();
+
+    abstract public void setPreviewTexture(SurfaceTexture surfaceTexture);
+
+    abstract public Size getPreviewSize();
 
     interface Callback {
 
@@ -77,6 +104,11 @@ abstract class CameraViewImpl {
 
         void onPictureTaken(byte[] data);
 
+        void onVideoRecorded(String path);
+
+        void onFramePreview(byte[] data, int width, int height, int orientation);
+
+        void onMountError();
     }
 
 }
