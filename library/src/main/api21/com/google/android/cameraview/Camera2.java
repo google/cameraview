@@ -36,7 +36,9 @@ import android.util.SparseIntArray;
 import android.view.Surface;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
 
@@ -426,10 +428,16 @@ class Camera2 extends CameraViewImpl {
         }
         mPictureSizes.clear();
         collectPictureSizes(mPictureSizes, map);
+
+        final List<AspectRatio> removeList = new ArrayList<>();
         for (AspectRatio ratio : mPreviewSizes.ratios()) {
             if (!mPictureSizes.ratios().contains(ratio)) {
-                mPreviewSizes.remove(ratio);
+                removeList.add(ratio);
             }
+        }
+
+        for (AspectRatio ratio : removeList) {
+            mPreviewSizes.remove(ratio);
         }
 
         if (!mPreviewSizes.ratios().contains(mAspectRatio)) {
