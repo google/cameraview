@@ -20,7 +20,7 @@ import android.annotation.SuppressLint;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.os.Build;
-import android.support.v4.util.SparseArrayCompat;
+import androidx.collection.SparseArrayCompat;
 import android.view.SurfaceHolder;
 
 import java.io.IOException;
