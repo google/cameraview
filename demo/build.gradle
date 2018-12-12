@@ -25,7 +25,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName '1.0'
-        testInstrumentationRunner 'android.support.test.runner.AndroidJUnitRunner'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         vectorDrawables.useSupportLibrary = true
     }
     buildTypes {
@@ -37,16 +37,16 @@ android {
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile "com.android.support:design:$supportLibraryVersion"
-    compile project(':library')
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation "com.google.android.material:material:$materialVersion"
+    implementation project(":library")
 
     // Tests
-    testCompile 'junit:junit:4.12'
-    androidTestCompile('com.android.support.test:runner:0.5') {
-        exclude module: 'support-annotations'
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation("androidx.test:runner:$androidTestVersion") {
+        exclude module: "support-annotations"
     }
-    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2') {
-        exclude module: 'support-annotations'
+    androidTestImplementation("androidx.test.espresso:espresso-core:$androidEspressoVersion") {
+        exclude module: "support-annotations"
     }
 }
