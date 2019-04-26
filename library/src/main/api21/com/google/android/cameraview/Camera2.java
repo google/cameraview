@@ -16,9 +16,12 @@
 
 package com.google.android.cameraview;
 
+import static android.R.attr.angle;
+
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.ImageFormat;
+import android.graphics.PointF;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -32,11 +35,13 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.support.annotation.NonNull;
 import android.util.Log;
+import android.util.SizeF;
 import android.util.SparseIntArray;
 import android.view.Surface;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.SortedSet;
 
@@ -198,6 +203,8 @@ class Camera2 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
+    private final HashMap<String, PointF> mViewAngleMap = new HashMap<>();
+
     Camera2(Callback callback, PreviewImpl preview, Context context) {
         super(callback, preview);
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
@@ -207,6 +214,35 @@ class Camera2 extends CameraViewImpl {
                 startCaptureSession();
             }
         });
+
+        // Get all view angles
+        try {
+            for (final String cameraId : mCameraManager.getCameraIdList()) {
+                CameraCharacteristics characteristics =
+                        mCameraManager.getCameraCharacteristics(cameraId);
+                @SuppressWarnings("ConstantConditions")
+                int orientation = characteristics.get(CameraCharacteristics.LENS_FACING);
+                if (orientation == CameraCharacteristics.LENS_FACING_BACK) {
+                    float[] maxFocus = characteristics.get(
+                            CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+                    if (maxFocus == null) {
+                        continue;
+                    }
+                    SizeF size = characteristics.get(
+                            CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+                    if (size == null) {
+                        continue;
+                    }
+                    float w = size.getWidth();
+                    float h = size.getHeight();
+                    mViewAngleMap.put(cameraId, new PointF(
+                            (float) Math.toDegrees(2*Math.atan(size.getWidth()/(maxFocus[0]*2))),
+                            (float) Math.toDegrees(2*Math.atan(size.getHeight()/(maxFocus[0]*2)))));
+                }
+            }
+        } catch (CameraAccessException e) {
+            throw new RuntimeException("Failed to get camera view angles", e);
+        }
     }
 
     @Override
@@ -256,6 +292,24 @@ class Camera2 extends CameraViewImpl {
     @Override
     int getFacing() {
         return mFacing;
+    }
+
+    @Override
+    float getHorizontalViewAngle() {
+        if (mCamera == null) {
+            return 0f;
+        }
+        PointF angles = mViewAngleMap.get(mCamera.getId());
+        return angles != null ? angles.x : 0f;
+    }
+
+    @Override
+    float getVerticalViewAngle() {
+        if (mCamera == null) {
+            return 0f;
+        }
+        PointF angles = mViewAngleMap.get(mCamera.getId());
+        return angles != null ? angles.y : 0f;
     }
 
     @Override
