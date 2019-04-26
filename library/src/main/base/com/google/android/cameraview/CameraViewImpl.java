@@ -48,6 +48,10 @@ abstract class CameraViewImpl {
 
     abstract int getFacing();
 
+    abstract float getHorizontalViewAngle();
+
+    abstract float getVerticalViewAngle();
+
     abstract Set<AspectRatio> getSupportedAspectRatios();
 
     /**
@@ -66,6 +70,8 @@ abstract class CameraViewImpl {
     abstract int getFlash();
 
     abstract void takePicture();
+
+    abstract int getCameraOrientation();
 
     abstract void setDisplayOrientation(int displayOrientation);
 

@@ -19,6 +19,7 @@ package com.google.android.cameraview;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.ImageFormat;
+import android.graphics.PointF;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -30,13 +31,16 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 import android.util.Log;
+import android.util.SizeF;
 import android.util.SparseIntArray;
 import android.view.Surface;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.SortedSet;
 
@@ -193,8 +197,12 @@ class Camera2 extends CameraViewImpl {
     private boolean mAutoFocus;
 
     private int mFlash;
+    
+    private int mCameraOrientation;
 
     private int mDisplayOrientation;
+
+    private final HashMap<String, PointF> mViewAngleMap = new HashMap<>();
 
     Camera2(Callback callback, PreviewImpl preview, Context context) {
         super(callback, preview);
@@ -205,6 +213,35 @@ class Camera2 extends CameraViewImpl {
                 startCaptureSession();
             }
         });
+
+        // Get all view angles
+        try {
+            for (final String cameraId : mCameraManager.getCameraIdList()) {
+                CameraCharacteristics characteristics =
+                        mCameraManager.getCameraCharacteristics(cameraId);
+                @SuppressWarnings("ConstantConditions")
+                int orientation = characteristics.get(CameraCharacteristics.LENS_FACING);
+                if (orientation == CameraCharacteristics.LENS_FACING_BACK) {
+                    float[] maxFocus = characteristics.get(
+                            CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+                    if (maxFocus == null) {
+                        continue;
+                    }
+                    SizeF size = characteristics.get(
+                            CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+                    if (size == null) {
+                        continue;
+                    }
+                    float w = size.getWidth();
+                    float h = size.getHeight();
+                    mViewAngleMap.put(cameraId, new PointF(
+                            (float) Math.toDegrees(2*Math.atan(size.getWidth()/(maxFocus[0]*2))),
+                            (float) Math.toDegrees(2*Math.atan(size.getHeight()/(maxFocus[0]*2)))));
+                }
+            }
+        } catch (CameraAccessException e) {
+            throw new RuntimeException("Failed to get camera view angles", e);
+        }
     }
 
     @Override
@@ -257,17 +294,43 @@ class Camera2 extends CameraViewImpl {
     }
 
     @Override
+    float getHorizontalViewAngle() {
+        if (mCamera == null) {
+            return 0f;
+        }
+        PointF angles = mViewAngleMap.get(mCamera.getId());
+        return angles != null ? angles.x : 0f;
+    }
+
+    @Override
+    float getVerticalViewAngle() {
+        if (mCamera == null) {
+            return 0f;
+        }
+        PointF angles = mViewAngleMap.get(mCamera.getId());
+        return angles != null ? angles.y : 0f;
+    }
+
+    @Override
     Set<AspectRatio> getSupportedAspectRatios() {
         return mPreviewSizes.ratios();
     }
 
     @Override
     boolean setAspectRatio(AspectRatio ratio) {
-        if (ratio == null || ratio.equals(mAspectRatio) ||
-                !mPreviewSizes.ratios().contains(ratio)) {
+        if (ratio == null || ratio.equals(mAspectRatio)) {
             // TODO: Better error handling
             return false;
         }
+        if (!mPreviewSizes.ratios().contains(ratio)) {
+            if (mPreviewSizes.ratios().size() <= 0) {
+                // may be initialized from layout xml
+                mAspectRatio = ratio;
+                return true;
+            }
+            return false;
+        }
+
         mAspectRatio = ratio;
         prepareImageReader();
         if (mCaptureSession != null) {
@@ -342,6 +405,11 @@ class Camera2 extends CameraViewImpl {
     }
 
     @Override
+    int getCameraOrientation() {
+        return mCameraOrientation;
+    }
+
+    @Override
     void setDisplayOrientation(int displayOrientation) {
         mDisplayOrientation = displayOrientation;
         mPreview.setDisplayOrientation(mDisplayOrientation);
@@ -407,8 +475,8 @@ class Camera2 extends CameraViewImpl {
 
     /**
      * <p>Collects some information from {@link #mCameraCharacteristics}.</p>
-     * <p>This rewrites {@link #mPreviewSizes}, {@link #mPictureSizes}, and optionally,
-     * {@link #mAspectRatio}.</p>
+     * <p>This rewrites {@link #mPreviewSizes}, {@link #mPictureSizes},
+     * {@link #mCameraOrientation}, and optionally, {@link #mAspectRatio}.</p>
      */
     private void collectCameraInfo() {
         StreamConfigurationMap map = mCameraCharacteristics.get(
@@ -426,15 +494,19 @@ class Camera2 extends CameraViewImpl {
         }
         mPictureSizes.clear();
         collectPictureSizes(mPictureSizes, map);
-        for (AspectRatio ratio : mPreviewSizes.ratios()) {
+        Iterator<AspectRatio> iterator = mPreviewSizes.ratios().iterator();
+        while (iterator.hasNext()) {
+            AspectRatio ratio = iterator.next();
             if (!mPictureSizes.ratios().contains(ratio)) {
-                mPreviewSizes.remove(ratio);
+                iterator.remove();
             }
         }
 
         if (!mPreviewSizes.ratios().contains(mAspectRatio)) {
             mAspectRatio = mPreviewSizes.ratios().iterator().next();
         }
+
+        mCameraOrientation = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
     }
 
     protected void collectPictureSizes(SizeMap sizes, StreamConfigurationMap map) {

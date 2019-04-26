@@ -20,10 +20,11 @@ import android.annotation.SuppressLint;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.os.Build;
-import android.support.v4.util.SparseArrayCompat;
+import androidx.collection.SparseArrayCompat;
 import android.view.SurfaceHolder;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
@@ -149,11 +150,23 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
+    float getHorizontalViewAngle() {
+        return mCameraParameters != null ? mCameraParameters.getHorizontalViewAngle() : 0f;
+    }
+
+    @Override
+    float getVerticalViewAngle() {
+        return mCameraParameters != null ? mCameraParameters.getVerticalViewAngle() : 0f;
+    }
+
+    @Override
     Set<AspectRatio> getSupportedAspectRatios() {
         SizeMap idealAspectRatios = mPreviewSizes;
-        for (AspectRatio aspectRatio : idealAspectRatios.ratios()) {
+        Iterator<AspectRatio> iterator = idealAspectRatios.ratios().iterator();
+        while (iterator.hasNext()) {
+            AspectRatio aspectRatio = iterator.next();
             if (mPictureSizes.sizes(aspectRatio) == null) {
-                idealAspectRatios.remove(aspectRatio);
+                iterator.remove();
             }
         }
         return idealAspectRatios.ratios();
@@ -251,6 +264,11 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
+    int getCameraOrientation() {
+        return mCameraInfo.orientation;
+    }
+
+    @Override
     void setDisplayOrientation(int displayOrientation) {
         if (mDisplayOrientation == displayOrientation) {
             return;
@@ -328,12 +346,19 @@ class Camera1 extends CameraViewImpl {
         }
         Size size = chooseOptimalSize(sizes);
 
-        // Always re-apply camera parameters
-        // Largest picture size in this ratio
-        final Size pictureSize = mPictureSizes.sizes(mAspectRatio).last();
+        final Size pictureSize;
+        if (mPictureSizes.sizes(mAspectRatio) == null) {
+            pictureSize = size;
+        } else {
+            // Largest picture size in this ratio
+            pictureSize = mPictureSizes.sizes(mAspectRatio).last();
+        }
+
         if (mShowingPreview) {
             mCamera.stopPreview();
         }
+
+        // Always re-apply camera parameters
         mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
         mCameraParameters.setPictureSize(pictureSize.getWidth(), pictureSize.getHeight());
         mCameraParameters.setRotation(calcCameraRotation(mDisplayOrientation));

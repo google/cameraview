@@ -22,12 +22,12 @@ import android.content.res.TypedArray;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.support.annotation.IntDef;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.os.ParcelableCompat;
-import android.support.v4.os.ParcelableCompatCreatorCallbacks;
-import android.support.v4.view.ViewCompat;
+import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.os.ParcelableCompat;
+import androidx.core.os.ParcelableCompatCreatorCallbacks;
+import androidx.core.view.ViewCompat;
 import android.util.AttributeSet;
 import android.widget.FrameLayout;
 
@@ -331,6 +331,24 @@ public class CameraView extends FrameLayout {
     }
 
     /**
+     * Gets the horizontal view angle of the current camera.
+     *
+     * @return The current camera's horizontal view angle.
+     */
+    public float getHorizontalViewAngle() {
+        return mImpl.getHorizontalViewAngle();
+    }
+
+    /**
+     * Gets the vertical view angle of the current camera.
+     *
+     * @return The current camera's vertical view angle.
+     */
+    public float getVerticalViewAngle() {
+        return mImpl.getVerticalViewAngle();
+    }
+
+    /**
      * Gets all the aspect ratios supported by the current camera.
      */
     public Set<AspectRatio> getSupportedAspectRatios() {
@@ -397,6 +415,15 @@ public class CameraView extends FrameLayout {
     public int getFlash() {
         //noinspection WrongConstant
         return mImpl.getFlash();
+    }
+
+    /**
+     * Gets the camera orientation relative to the devices native orientation.
+     *
+     * @return The orientation of the camera.
+     */
+    public int getCameraOrientation() {
+        return mImpl.getCameraOrientation();
     }
 
     /**
