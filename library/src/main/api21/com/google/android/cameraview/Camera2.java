@@ -16,8 +16,6 @@
 
 package com.google.android.cameraview;
 
-import static android.R.attr.angle;
-
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.ImageFormat;
@@ -33,7 +31,7 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 import android.util.Log;
 import android.util.SizeF;
 import android.util.SparseIntArray;
@@ -42,6 +40,7 @@ import android.view.Surface;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.SortedSet;
 
