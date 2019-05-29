@@ -143,9 +143,11 @@ class Camera1 extends CameraViewImpl {
     @Override
     Set<AspectRatio> getSupportedAspectRatios() {
         SizeMap idealAspectRatios = mPreviewSizes;
-        for (AspectRatio aspectRatio : idealAspectRatios.ratios()) {
+        Iterator<AspectRatio> iterator = idealAspectRatios.ratios().iterator();
+        while (iterator.hasNext()) {
+            AspectRatio aspectRatio = iterator.next();
             if (mPictureSizes.sizes(aspectRatio) == null) {
-                idealAspectRatios.remove(aspectRatio);
+                iterator.remove();
             }
         }
         return idealAspectRatios.ratios();
