@@ -1,6 +1,10 @@
-# CameraView
+# Deprecated
 
-*This is a preview release. The API is subject to change.*
+CameraView is deprecated. No more development will be taking place.
+
+Use [Jetpack CameraX](https://developer.android.com/jetpack/androidx/releases/camerax) instead.
+
+# CameraView
 
 This is not an official Google product.
 
