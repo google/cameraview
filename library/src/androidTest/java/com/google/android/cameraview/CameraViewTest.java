@@ -215,6 +215,20 @@ public class CameraViewTest {
     }
 
     @Test
+    public void testZoom() {
+        onView(withId(R.id.camera))
+                .check(new ViewAssertion() {
+                    @Override
+                    public void check(View view, NoMatchingViewException noViewFoundException) {
+                        CameraView cameraView = (CameraView) view;
+                        assertThat(cameraView.getZoom(), is(1.f));
+                        cameraView.setZoom(2.f);
+                        assertThat(cameraView.getZoom(), is(2.f));
+                    }
+                });
+    }
+
+    @Test
     public void testTakePicture() throws Exception {
         TakePictureIdlingResource resource = new TakePictureIdlingResource(
                 (CameraView) rule.getActivity().findViewById(R.id.camera));
