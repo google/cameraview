@@ -113,6 +113,17 @@ class Camera1 extends CameraViewImpl {
             } else {
                 mCamera.setPreviewTexture((SurfaceTexture) mPreview.getSurfaceTexture());
             }
+
+            mCamera.setPreviewCallback(new Camera.PreviewCallback() {
+                @Override
+                public void onPreviewFrame(byte[] data, Camera camera) {
+                    final Camera.Parameters parameters = camera.getParameters();
+                    final int width = parameters.getPreviewSize().width;
+                    final int height = parameters.getPreviewSize().height;
+                    mCallback.onPreviewFrame(data, parameters.getPreviewFormat(), width, height);
+                }
+            });
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
