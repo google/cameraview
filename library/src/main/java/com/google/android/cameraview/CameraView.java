@@ -398,6 +398,15 @@ public class CameraView extends FrameLayout {
     }
 
     /**
+     * Gets the camera orientation relative to the devices native orientation.
+     *
+     * @return The orientation of the camera.
+     */
+    public int getCameraOrientation() {
+        return mImpl.getCameraOrientation();
+    }
+
+    /**
      * Take a picture. The result will be returned to
      * {@link Callback#onPictureTaken(CameraView, byte[])}.
      */
