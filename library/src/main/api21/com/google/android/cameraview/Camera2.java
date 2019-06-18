@@ -77,6 +77,7 @@ class Camera2 extends CameraViewImpl {
 
         @Override
         public void onClosed(@NonNull CameraDevice camera) {
+            mCamera = null;
             mCallback.onCameraClosed();
         }
 
