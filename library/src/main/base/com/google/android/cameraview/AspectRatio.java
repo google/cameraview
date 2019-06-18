@@ -34,7 +34,7 @@ public class AspectRatio implements Comparable<AspectRatio>, Parcelable {
 
     /**
      * Returns an instance of {@link AspectRatio} specified by {@code x} and {@code y} values.
-     * The values {@code x} and {@code} will be reduced by their greatest common divider.
+     * The values {@code x} and {@code y} will be reduced by their greatest common divider.
      *
      * @param x The width
      * @param y The height
