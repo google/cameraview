@@ -329,6 +329,24 @@ public class CameraView extends FrameLayout {
     }
 
     /**
+     * Gets the horizontal view angle of the current camera.
+     *
+     * @return The current camera's horizontal view angle.
+     */
+    public float getHorizontalViewAngle() {
+        return mImpl.getHorizontalViewAngle();
+    }
+
+    /**
+     * Gets the vertical view angle of the current camera.
+     *
+     * @return The current camera's vertical view angle.
+     */
+    public float getVerticalViewAngle() {
+        return mImpl.getVerticalViewAngle();
+    }
+
+    /**
      * Gets all the aspect ratios supported by the current camera.
      */
     public Set<AspectRatio> getSupportedAspectRatios() {
