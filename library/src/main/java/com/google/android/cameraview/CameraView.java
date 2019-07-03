@@ -441,6 +441,13 @@ public class CameraView extends FrameLayout {
         }
 
         @Override
+        public void onCameraNotAvailable() {
+            for (Callback callback : mCallbacks) {
+                callback.onCameraNotAvailable(CameraView.this);
+            }
+        }
+
+        @Override
         public void onPictureTaken(byte[] data) {
             for (Callback callback : mCallbacks) {
                 callback.onPictureTaken(CameraView.this, data);
@@ -528,6 +535,14 @@ public class CameraView extends FrameLayout {
          * @param cameraView The associated {@link CameraView}.
          */
         public void onCameraClosed(CameraView cameraView) {
+        }
+
+        /**
+         * Called when there is no camera to open
+         *
+         * @param cameraView The associated {@link CameraView}.
+         */
+        public void onCameraNotAvailable(CameraView cameraView) {
         }
 
         /**

@@ -248,6 +248,13 @@ public class MainActivity extends AppCompatActivity implements
         }
 
         @Override
+        public void onCameraNotAvailable(CameraView cameraView) {
+            Log.d(TAG, "onCameraNotAvailable");
+            Toast.makeText(cameraView.getContext(), R.string.camera_not_available,
+                    Toast.LENGTH_LONG).show();
+        }
+
+        @Override
         public void onPictureTaken(CameraView cameraView, final byte[] data) {
             Log.d(TAG, "onPictureTaken " + data.length);
             Toast.makeText(cameraView.getContext(), R.string.picture_taken, Toast.LENGTH_SHORT)

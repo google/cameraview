@@ -22,4 +22,5 @@
     <string name="flash_auto">Flash auto</string>
     <string name="flash_off">Flash off</string>
     <string name="flash_on">Flash on</string>
+    <string name="camera_not_available">There are no cameras available.</string>
 </resources>
