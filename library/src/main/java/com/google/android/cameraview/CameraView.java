@@ -242,6 +242,9 @@ public class CameraView extends FrameLayout {
      */
     public void start() {
         if (!mImpl.start()) {
+            if (mImpl.getView() != null) {
+                this.removeView(mImpl.getView());
+            }
             //store the state ,and restore this state after fall back o Camera1
             Parcelable state = onSaveInstanceState();
             // Camera2 uses legacy hardware layer; fall back to Camera1
