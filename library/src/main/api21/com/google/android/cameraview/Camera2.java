@@ -72,7 +72,11 @@ class Camera2 extends CameraViewImpl {
         public void onOpened(@NonNull CameraDevice camera) {
             mCamera = camera;
             mCallback.onCameraOpened();
-            startCaptureSession();
+            try {
+                startCaptureSession();
+            } catch (CameraAccessException e) {
+                Log.e(TAG, "Failed to start camera session", e);
+            }
         }
 
         @Override
@@ -202,7 +206,11 @@ class Camera2 extends CameraViewImpl {
         mPreview.setCallback(new PreviewImpl.Callback() {
             @Override
             public void onSurfaceChanged() {
-                startCaptureSession();
+                try {
+                    startCaptureSession();
+                } catch (CameraAccessException e) {
+                    Log.e(TAG, "Failed to start camera session", e);
+                }
             }
         });
     }
@@ -273,7 +281,11 @@ class Camera2 extends CameraViewImpl {
         if (mCaptureSession != null) {
             mCaptureSession.close();
             mCaptureSession = null;
-            startCaptureSession();
+            try {
+                startCaptureSession();
+            } catch (CameraAccessException e) {
+                Log.e(TAG, "Failed to start camera session", e);
+            }
         }
         return true;
     }
@@ -457,6 +469,7 @@ class Camera2 extends CameraViewImpl {
      * <p>Starts opening a camera device.</p>
      * <p>The result will be processed in {@link #mCameraDeviceCallback}.</p>
      */
+    @SuppressWarnings("MissingPermission")
     private void startOpeningCamera() {
         try {
             mCameraManager.openCamera(mCameraId, mCameraDeviceCallback, null);
@@ -469,22 +482,20 @@ class Camera2 extends CameraViewImpl {
      * <p>Starts a capture session for camera preview.</p>
      * <p>This rewrites {@link #mPreviewRequestBuilder}.</p>
      * <p>The result will be continuously processed in {@link #mSessionCallback}.</p>
+     *
+     * @throws CameraAccessException exceptions from {@link Camera2}
      */
-    void startCaptureSession() {
+    void startCaptureSession() throws CameraAccessException {
         if (!isCameraOpened() || !mPreview.isReady() || mImageReader == null) {
             return;
         }
         Size previewSize = chooseOptimalSize();
         mPreview.setBufferSize(previewSize.getWidth(), previewSize.getHeight());
         Surface surface = mPreview.getSurface();
-        try {
-            mPreviewRequestBuilder = mCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-            mPreviewRequestBuilder.addTarget(surface);
-            mCamera.createCaptureSession(Arrays.asList(surface, mImageReader.getSurface()),
-                    mSessionCallback, null);
-        } catch (CameraAccessException e) {
-            throw new RuntimeException("Failed to start camera session");
-        }
+        mPreviewRequestBuilder = mCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+        mPreviewRequestBuilder.addTarget(surface);
+        mCamera.createCaptureSession(Arrays.asList(surface, mImageReader.getSurface()),
+                mSessionCallback, null);
     }
 
     /**
